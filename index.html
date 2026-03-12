@@ -1,0 +1,2759 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCW Auto — ระบบติดตามงานหลังการขาย</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #141720;
+    --surface2: #1c2030;
+    --border: #252a3a;
+    --accent: #f5a623;
+    --accent2: #e05c2a;
+    --blue: #3b82f6;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #eab308;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --subtle: #374151;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    height: 60px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .brand-icon {
+    height: 36px;
+    display: flex; align-items: center;
+  }
+  .brand-icon img {
+    height: 36px;
+    width: auto;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+  }
+  .brand-name { font-size: 16px; font-weight: 700; letter-spacing: .5px; }
+  .brand-sub { font-size: 11px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .badge-admin {
+    background: rgba(245,166,35,.15);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(245,166,35,.3);
+    letter-spacing: .5px;
+  }
+  .date-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* ── LAYOUT ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: calc(100vh - 60px);
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 0;
+  }
+  .sidebar-section { padding: 0 16px; margin-bottom: 24px; }
+  .sidebar-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+    padding: 0 8px;
+    margin-bottom: 8px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--muted);
+    transition: all .15s;
+    margin-bottom: 2px;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: rgba(245,166,35,.12); color: var(--accent); }
+  .nav-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  .summary-box {
+    margin: 0 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .summary-title { font-size: 11px; color: var(--muted); margin-bottom: 12px; letter-spacing: .5px; }
+  .summary-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .summary-row:last-child { margin-bottom: 0; }
+  .summary-key { font-size: 12px; color: var(--muted); }
+  .summary-val { font-size: 13px; font-weight: 600; font-family: 'IBM Plex Mono', monospace; }
+
+  /* ── MAIN ── */
+  .main { padding: 28px 32px; }
+
+  .page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .page-title { font-size: 22px; font-weight: 700; }
+  .page-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .add-btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+    transition: opacity .15s;
+  }
+  .add-btn:hover { opacity: .85; }
+
+  /* ── KPI CARDS ── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .kpi-card.orange::before { background: var(--accent); }
+  .kpi-card.blue::before { background: var(--blue); }
+  .kpi-card.green::before { background: var(--green); }
+  .kpi-card.red::before { background: var(--red); }
+  .kpi-label { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .kpi-value { font-size: 32px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; line-height: 1; }
+  .kpi-unit { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .kpi-hint {
+    font-size: 10px;
+    color: transparent;
+    margin-top: 6px;
+    transition: color .2s;
+    letter-spacing: .3px;
+  }
+  .kpi-clickable {
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s, border-color .15s;
+  }
+  .kpi-clickable:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(0,0,0,.25);
+    border-color: rgba(255,255,255,.12);
+  }
+  .kpi-clickable:hover .kpi-hint { color: var(--muted); }
+  .kpi-clickable:active { transform: translateY(0); }
+
+  /* ── PIPELINE OVERVIEW ── */
+  .pipeline-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 28px;
+  }
+  .pipeline-title { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 16px; letter-spacing: .5px; text-transform: uppercase; }
+  .steps-row { display: flex; align-items: center; gap: 0; }
+  .step-pill {
+    flex: 1;
+    text-align: center;
+    padding: 10px 4px;
+    position: relative;
+    cursor: pointer;
+  }
+  .step-pill::after {
+    content: '›';
+    position: absolute;
+    right: -5px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--border);
+    font-size: 20px;
+    z-index: 1;
+  }
+  .step-pill:last-child::after { display: none; }
+  .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
+    margin: 0 auto 6px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .step-name { font-size: 11px; color: var(--muted); line-height: 1.3; }
+  .step-count { font-size: 16px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; color: var(--text); margin-top: 4px; }
+
+  /* ── TABLE ── */
+  .table-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .table-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .table-title { font-size: 14px; font-weight: 600; }
+  .filter-row { display: flex; gap: 8px; }
+  .filter-btn {
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+    transition: all .15s;
+  }
+  .filter-btn.active, .filter-btn:hover {
+    background: var(--surface2);
+    color: var(--text);
+    border-color: var(--accent);
+  }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { border-bottom: 1px solid var(--border); }
+  th {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    padding: 12px 16px;
+    text-align: left;
+    white-space: nowrap;
+  }
+  td {
+    padding: 14px 16px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(37,42,58,.6);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,.02); }
+
+  .truck-id {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .wheel-badge {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    padding: 2px 8px; border-radius: 10px; white-space: nowrap;
+    background: rgba(99,102,241,.15); color: #818cf8;
+    border: 1px solid rgba(99,102,241,.3);
+  }
+  .customer-name { font-weight: 500; }
+  .price-cell {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--green);
+  }
+
+  /* Stage badge */
+  .stage-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .stage-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  .s1 { background: rgba(245,166,35,.12); color: var(--accent); }
+  .s1 .stage-dot { background: var(--accent); }
+  .s2 { background: rgba(59,130,246,.12); color: #60a5fa; }
+  .s2 .stage-dot { background: #60a5fa; }
+  .s3 { background: rgba(168,85,247,.12); color: #c084fc; }
+  .s3 .stage-dot { background: #c084fc; }
+  .s4 { background: rgba(234,179,8,.12); color: #facc15; }
+  .s4 .stage-dot { background: #facc15; }
+  .s5 { background: rgba(34,197,94,.12); color: var(--green); }
+  .s5 .stage-dot { background: var(--green); }
+  .s6 { background: rgba(34,197,94,.2); color: #4ade80; }
+  .s6 .stage-dot { background: #4ade80; }
+  .s7a { background: rgba(107,114,128,.15); color: #9ca3af; }
+  .s7a .stage-dot { background: #9ca3af; }
+  .s7b { background: rgba(239,68,68,.12); color: #f87171; }
+  .s7b .stage-dot { background: #f87171; }
+  .done { background: rgba(55,65,81,.3); color: var(--muted); }
+  .done .stage-dot { background: var(--muted); }
+
+  /* Person pill */
+  .person-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--surface2);
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .person-avatar {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  /* Reg badge */
+  .reg-needed { color: #f87171; font-size: 12px; }
+  .reg-none { color: var(--muted); font-size: 12px; }
+
+  /* Progress bar */
+  .progress-bar {
+    width: 80px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width .3s;
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.7);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 680px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: fadeUp .2s ease;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .modal-head {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .modal-head-title { font-size: 16px; font-weight: 700; }
+  .modal-head-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .modal-close {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-body { padding: 24px; }
+
+  .pipeline-steps { display: flex; flex-direction: column; gap: 0; }
+  .p-step {
+    display: flex;
+    gap: 16px;
+    position: relative;
+    padding-bottom: 20px;
+  }
+  .p-step:last-child { padding-bottom: 0; }
+  .p-step::before {
+    content: '';
+    position: absolute;
+    left: 17px;
+    top: 34px;
+    bottom: 0;
+    width: 2px;
+    background: var(--border);
+  }
+  .p-step:last-child::before { display: none; }
+  .step-circle {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+    font-family: 'IBM Plex Mono', monospace;
+    z-index: 1;
+  }
+  .step-complete { background: rgba(34,197,94,.2); color: var(--green); border: 2px solid var(--green); }
+  .step-active { background: rgba(245,166,35,.2); color: var(--accent); border: 2px solid var(--accent); }
+  .step-pending { background: var(--surface2); color: var(--muted); border: 2px solid var(--border); }
+  .step-content { flex: 1; padding-top: 6px; }
+  .step-content-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .step-content-person { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .step-content-note {
+    font-size: 12px;
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: var(--muted);
+    border-left: 2px solid var(--border);
+  }
+  .step-content-note.highlight { border-left-color: var(--accent); color: var(--text); }
+
+  .outsource-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .outsource-tag {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(224,92,42,.12);
+    color: #fb923c;
+    border: 1px solid rgba(224,92,42,.3);
+  }
+
+  /* outsource status badges */
+  .os-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 700; padding: 4px 12px;
+    border-radius: 20px; white-space: nowrap;
+  }
+  .os-badge-pending  { background: rgba(234,179,8,.12);  color: #eab308; border: 1px solid rgba(234,179,8,.3); }
+  .os-badge-inprog   { background: rgba(59,130,246,.12); color: #60a5fa; border: 1px solid rgba(59,130,246,.3); }
+  .os-badge-done     { background: rgba(34,197,94,.12);  color: #4ade80; border: 1px solid rgba(34,197,94,.3); }
+
+  /* outsource inline edit panel */
+  .os-edit-panel {
+    display: none; background: var(--surface2);
+    border: 1px solid var(--accent); border-radius: 12px;
+    padding: 16px; margin-top: 10px;
+  }
+  .os-edit-panel.open { display: block; }
+  .os-edit-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .os-edit-field { display: flex; flex-direction: column; gap: 5px; }
+  .os-edit-label { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .3px; }
+  .os-edit-select, .os-edit-input {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 12px; font-size: 13px;
+    color: var(--text); font-family: 'IBM Plex Sans Thai', sans-serif;
+    outline: none; transition: border-color .2s; min-width: 160px;
+  }
+  .os-edit-select:focus, .os-edit-input:focus { border-color: var(--accent); }
+  .os-save-btn {
+    background: var(--accent); color: #0d0f14; border: none; border-radius: 8px;
+    padding: 8px 18px; font-size: 13px; font-weight: 700; cursor: pointer;
+    font-family: 'IBM Plex Sans Thai', sans-serif; align-self: flex-end;
+    transition: opacity .15s;
+  }
+  .os-save-btn:hover { opacity: .85; }
+  .os-cancel-btn {
+    background: transparent; color: var(--muted); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer;
+    font-family: 'IBM Plex Sans Thai', sans-serif; align-self: flex-end;
+    transition: border-color .2s;
+  }
+  .os-cancel-btn:hover { border-color: var(--muted); color: var(--text); }
+
+  /* registration card layout */
+  .reg-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin-bottom: 14px; }
+  .reg-card-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .reg-card-info { flex: 1; min-width: 0; }
+  .reg-card-id { font-family: 'IBM Plex Mono',monospace; color: var(--accent); font-size: 12px; font-weight: 700; }
+  .reg-card-model { font-size: 14px; font-weight: 600; margin-top: 2px; }
+  .reg-card-customer { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .reg-steps { display: flex; flex-direction: column; gap: 8px; }
+  .reg-step { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); }
+  .reg-step.done { border-color: rgba(34,197,94,.25); background: rgba(34,197,94,.05); }
+  .reg-step.active { border-color: rgba(59,130,246,.35); background: rgba(59,130,246,.07); }
+  .reg-step-icon { font-size: 16px; margin-top: 1px; flex-shrink: 0; }
+  .reg-step-body { flex: 1; min-width: 0; }
+  .reg-step-title { font-size: 13px; font-weight: 600; }
+  .reg-step-meta { font-size: 11px; color: var(--muted); margin-top: 3px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .reg-step-date { font-family: 'IBM Plex Mono',monospace; color: var(--accent); }
+  .reg-step-days { font-weight: 600; }
+  .reg-step-days.warn { color: #f87171; }
+  .reg-step-days.ok { color: #4ade80; }
+  .reg-summary { margin-top: 12px; padding: 10px 14px; border-radius: 8px; background: rgba(245,166,35,.08); border: 1px solid rgba(245,166,35,.2); display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+  .reg-summary-label { color: var(--muted); }
+  .reg-summary-val { font-family: 'IBM Plex Mono',monospace; font-weight: 700; color: var(--accent); font-size: 14px; }
+
+  /* outsource card layout */
+  .os-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 18px; margin-bottom: 12px;
+    transition: border-color .2s;
+  }
+  .os-card:hover { border-color: rgba(251,146,60,.25); }
+  .os-card-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .os-card-info { flex: 1; min-width: 0; }
+  .os-card-id { font-family: 'IBM Plex Mono',monospace; color: var(--accent); font-size: 12px; font-weight: 700; }
+  .os-card-model { font-size: 14px; font-weight: 600; margin-top: 2px; }
+  .os-card-customer { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .os-card-actions { display: flex; gap: 8px; align-items: center; }
+  .os-edit-btn {
+    font-size: 12px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 7px; padding: 5px 12px; color: var(--text); cursor: pointer;
+    font-family: 'IBM Plex Sans Thai', sans-serif; transition: border-color .15s;
+  }
+  .os-edit-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .os-due-date { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+  .os-due-overdue { color: #f87171; font-weight: 600; }
+
+  .reg-branch {
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: var(--surface2);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .reg-branch-title { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .reg-sub { display: flex; flex-direction: column; gap: 6px; }
+  .reg-sub-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .reg-sub-icon { font-size: 14px; }
+
+  /* status input in modal */
+  .modal-field { margin-bottom: 16px; }
+  .modal-field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .modal-select, .modal-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--text);
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+    outline: none;
+  }
+  .modal-select:focus, .modal-input:focus { border-color: var(--accent); }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .btn-save {
+    flex: 1;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 11px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+  }
+  .edit-btn {
+    background: rgba(59,130,246,.12);
+    border: 1px solid rgba(59,130,246,.3);
+    color: #60a5fa;
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+    margin-right: 6px;
+    transition: background .15s;
+  }
+  .edit-btn:hover { background: rgba(59,130,246,.22); }
+
+  .delete-btn {
+    background: rgba(239,68,68,.1);
+    border: 1px solid rgba(239,68,68,.25);
+    color: #f87171;
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+    transition: background .15s;
+  }
+  .delete-btn:hover { background: rgba(239,68,68,.2); }
+
+  .modal-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modal-section-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 16px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    background: #22c55e;
+    color: #000;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 12px 20px;
+    border-radius: 10px;
+    z-index: 999;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all .25s;
+    pointer-events: none;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  .btn-cancel {
+    padding: 11px 20px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+  }
+
+  /* ── CUSTOMER CARDS ── */
+  .cust-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    transition: border-color .2s, transform .15s;
+    cursor: default;
+  }
+  .cust-card:hover { border-color: rgba(244,114,182,.35); transform: translateY(-2px); }
+  .cust-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .cust-avatar {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .cust-name { font-size: 15px; font-weight: 700; line-height: 1.2; }
+  .cust-type { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .cust-stats {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px; margin-bottom: 14px;
+  }
+  .cust-stat { text-align: center; }
+  .cust-stat-val { font-size: 20px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; }
+  .cust-stat-key { font-size: 10px; color: var(--muted); margin-top: 2px; letter-spacing: .3px; }
+  .cust-trucks { display: flex; flex-direction: column; gap: 6px; }
+  .cust-truck-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 10px;
+    background: var(--surface2);
+    border-radius: 8px;
+    font-size: 12px;
+  }
+  .cust-truck-id { font-family: 'IBM Plex Mono', monospace; color: var(--accent); font-size: 11px; }
+  .cust-truck-model { color: var(--text); flex: 1; margin: 0 8px; }
+  .cust-truck-price { color: var(--green); font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+  .cust-divider { height: 1px; background: var(--border); margin: 12px 0; }
+  .cust-total-row { display: flex; justify-content: space-between; align-items: center; }
+  .cust-total-label { font-size: 12px; color: var(--muted); }
+  .cust-total-val { font-size: 15px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; color: var(--green); }
+
+  /* ── CHECKLIST ── */
+  .cl-top { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .cl-date-btn {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); padding: 7px 14px; font-size: 13px; cursor: pointer;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+    transition: border-color .2s;
+  }
+  .cl-date-btn:hover { border-color: var(--accent); }
+  .cl-date-btn.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .cl-section { margin-bottom: 24px; }
+  .cl-section-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--muted);
+    text-transform: uppercase; margin-bottom: 10px; padding-left: 4px;
+  }
+  .cl-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+    transition: border-color .2s, opacity .2s;
+    cursor: pointer;
+  }
+  .cl-item:hover { border-color: rgba(245,166,35,.3); }
+  .cl-item.done { opacity: .45; }
+  .cl-item.done .cl-text { text-decoration: line-through; color: var(--muted); }
+  .cl-checkbox {
+    width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0;
+    border: 2px solid var(--border); display: flex; align-items: center;
+    justify-content: center; margin-top: 1px; transition: all .15s;
+  }
+  .cl-item.done .cl-checkbox { background: var(--green); border-color: var(--green); }
+  .cl-check-mark { font-size: 11px; color: #0d0f14; font-weight: 900; display: none; }
+  .cl-item.done .cl-check-mark { display: block; }
+  .cl-body { flex: 1; min-width: 0; }
+  .cl-text { font-size: 14px; font-weight: 500; line-height: 1.4; }
+  .cl-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .cl-tag {
+    display: inline-block; font-size: 10px; font-weight: 600;
+    padding: 2px 8px; border-radius: 10px; margin-right: 6px;
+  }
+  .cl-tag-auto { background: rgba(59,130,246,.15); color: #60a5fa; }
+  .cl-tag-reg  { background: rgba(168,85,247,.15); color: #c084fc; }
+  .cl-tag-pay  { background: rgba(239,68,68,.12);  color: #f87171; }
+  .cl-tag-custom { background: rgba(245,166,35,.12); color: var(--accent); }
+  .cl-delete {
+    color: var(--muted); font-size: 15px; padding: 0 4px;
+    cursor: pointer; opacity: 0; transition: opacity .15s;
+    background: none; border: none; line-height: 1;
+  }
+  .cl-item:hover .cl-delete { opacity: 1; }
+  .cl-add-row {
+    display: flex; gap: 10px; margin-top: 4px;
+  }
+  .cl-add-input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 11px 14px; font-size: 14px;
+    color: var(--text); font-family: 'IBM Plex Sans Thai', sans-serif;
+    outline: none; transition: border-color .2s;
+  }
+  .cl-add-input:focus { border-color: var(--accent); }
+  .cl-add-input::placeholder { color: var(--muted); }
+  .cl-add-btn {
+    background: var(--accent); color: #0d0f14; border: none; border-radius: 10px;
+    padding: 11px 20px; font-size: 14px; font-weight: 700; cursor: pointer;
+    font-family: 'IBM Plex Sans Thai', sans-serif; transition: opacity .15s;
+    white-space: nowrap;
+  }
+  .cl-add-btn:hover { opacity: .85; }
+  .cl-history-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; border-radius: 8px;
+    background: var(--surface2); margin-bottom: 6px; font-size: 12px;
+  }
+  .cl-history-date { color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 11px; min-width: 80px; }
+  .cl-progress-bar {
+    height: 4px; background: var(--border); border-radius: 4px; overflow: hidden; margin-bottom: 20px;
+  }
+  .cl-progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--green)); border-radius: 4px; transition: width .4s; }
+  .cl-stat-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .cl-stat-chip {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 14px; font-size: 12px; color: var(--muted);
+  }
+  .cl-stat-chip span { color: var(--text); font-weight: 700; }
+  .cl-empty { text-align: center; color: var(--muted); padding: 32px; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEMAAAAwCAYAAABKfMccAAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAAAL20lEQVR42u1Za0xU1xb+9jlnzswwM8DIMAXKMKB4NVgedgyPmFISsYkXNV77oKVp2iYa09gmJrdpmlTTR27vr2sfP9rYpJVEk8bUoNU+gto21vDoqIBYQ4UGWkoRmHGkwMC8zjnr/tCzO8MA4v3RP3dWsgNzzlr77P3ttdf61t6MiAgpAQAIKQhSYKTASIGRAiMFRgqMFBgpMFJg/KUiLUeJiHAvrJ0xBsYY/61pGu6V9QuCkNDHfFFVlX+LiJatr4soisnjvlttoqrqgobLBVHTtP/Z/q+WJcHQNA2CIICIMDAwkITuQh6hqircbjesVitfqZGREYyMjPBV1HUX64OIsGrVKjidThBRki4RoaurC6qqQpIkxGIxuFwu3H///QvqR6NRdHd3c++JxWLweDwwGo1Jq7egKIpCREQtLS1UUVFBoigSAAJAgiCQwWAgWZZJlmX+vyRJlJaWRoODg0RENDU1RXv37iWbzcZtl9v27NlDRESxWIyPSVVVIiLq7e1N0m9qakoYt26raRq1tLQk6JaWllIkEuH96YKlgHjrrbcSOokHZLFWV1dHREQ+n488Hk+C7d3s2R2QGWNUVFREkUiEiIg0TUsA5sCBAwSADAYDiaJIjDFauXIlRaPRBH19Htu3byfGGJlMJgJAR44cSQKaiChpm+gx4rPPPkNjYyMkSeIBVNM02Gw2rFu3DllZWUkBKRaLYdeuXdi5cye2bNmC1tZWyLIMRVGgaRoAYN26dXC5XEmurPVexaXJSUyG5iAIAlRNww8//ICqqio+JiKCqqooKyvDTz/9BFEUeb+MMfT09KCsrIw/EwQBv//+O9asWYNwOAwiQl5eHvr7+5GWlpa8XeOR0TSNNE2jYDBILpeLGGMkiiIJgkAAaN++fTQyMkJ3k6+//poAkCRJ3DY3N5dOnz6d4MYJ8q9/0z9X/43AGJkMBgJABw4c4Cuo23V2dvKtqnuUJEkEgD744AOur6/6O++8QwC4V8T3OV8SwNAVjh8/nuTaL7/8cgJoiqIktUgkQpqm0Y4dO4gxxsEwm83U1dXF932CXTRKiqKQ2t5BZ8vKSUxPJ5ExAkAej4cvkD62ffv2cTBWrFhBdrudA/P4448nxApVVamiooLrm81mGh4eTog/dwXjueeeI8YYybLMV3Vubo5PYCHR9+nMzAw5nU6+pwHQ7t27iYh4DFjAmNRIhHxbt1O5q+D24JlAkiTRwMAA7z8cDlNhYSGxO2C98sor1NTUxD3E5XJRKBTiY+no6EgYx0JBNl6EhYjItWvXEkhSXV0dzGbzomRFT3cAMDQ0BJ/Pl/CsoaGBp+lFyAwgy3BUV+PvaWmAIECWRCiKgjNnzvC93dbWhl9//ZX38/zzz6OmpgYAYDAYMDIygmvXrvE4cPjw4YTPvPjii0uSPyF+MowxRKNR+P3+BKXVq1fflYXq73RbURQ5L3G5XBAEYXEwBAECALZ5Ex5Js0BKT0dMUQAAX375JVc7duwYD/LFxcVYu3YtKioqEgLhhQsXQETw+/04ceIE5xU1NTWoqakBES26oEmjUxQFsVgs4ZnBYFiS6s63nw/QXRmoIABE0NavR1lBASoyMqESgQFob29HIBBAJBLBF198wcfxxBNPgIhQUlICh8OBaDQKAPj222/BGMPnn3+OW7duwWAwAABeeuklTiSXXaiZTCZYrdaEZ2NjY8uuLTIyMvhHdRDGx8ehadqSA4GqghkMsFdXY4vZfGerSAgGg7h8+TK8Xi8mJia4hzU2NoIxhhUrVuDBBx/k3XR1dSESieDTTz8FAMRiMbjdbuzYsWNJr0gAgzHG93VRUVGCJ5w/f57/VlWVb5n4pntCUVERrFYrL54AoLW19TZ3UFUOSlIDQJoG1G9CfVoaDBkZUO5ss9OnT/PJqaoKj8eDsrIy7sG1tbXcAwOBAJqbm+H1enkpsWvXLpjNZqiqurSHL5RN3n777SSe8P7779NyZePGjSQIt7MBY4ysVit1dnYuz1hRKLDjH7ShQM8qjDIyMig9PZ2P5eDBg0REFA6HiYjo/PnzPH0yxig7O/s2o2WMLBYLjY6OLppOF02tuvLQ0BDJsswJlz6IPXv2kNfrpdHRURobG0to4+PjNDIyQnNzc3TkyBGe0vQ0aLFYaP/+/eT1eqm/v5/6+/tpYGAgofX39dFcLEbafw7S/uLVBFEk6Y69Pjmj0Ui//PJLQor8448/KCsri+vEE7FnnnlmyXS6ZG2iG8V7x/y6wm63JzWHw0E2m40effRRIiLatGkTB0T3EN3eZDIlNavVSgaDgQ4dPUo0PEzn1pWS0eEgSRRJkiQyGo0kiiJt3rw5YeH0v5s3byZRFHnBqC9ER0cHJ4n3DEY8IDrbu9c2NDRE09PTVF9ff8+26ysqSCGimw3bqDzTnvS+ubk5gZHqf19//fXkvtav50x0OSLNL9L0ml9RFLz77ruora3FoUOH4Pf7wRjj7/XIHF9EiaKIaDSKnp4e7Ny5E62trfjkk09w4sQJHjyJCLIs86JLL7b0Pg2CAH8wCGdjI3Zb0nBy8hYETYNKBJPJhC1btnBOFG/X0NCAtrY2fsqmKApeeOEF/p34sxk9iGqaBkmSln/S9X97Bnr8+HHU1dXht99+4ymzo6MDDQ0N8Hq9WLlyJaqrq9HW1oYrV66gvr4e3333HbZv345QKITh4WFUVlbi6NGj2Lp1K2ZmZhCJRODz+VBaWorr16/D5/PhqaeeQjgcxscff4ytW7fi559/hqIoKCwsxOTkJD+5am1txZNPPonBwUEwxuBwODAwMID8/HzEYjFomoaSkhIEg0GMjY2huLgYfX19mJ2dhdlsRjAYRF5eHkKhENrb21FVVYWhoSFkZWXBarXixx9/xLPPPgtZlm+DobuNoih47bXX8OGHH+LSpUsYHx9HY2Mjrl69iurqarS0tGDt2rWoqamBIAi4evUqKisrcezYMWRmZmJ6ehqtra1488038dVXX3EqHo1G8dFHH+GNN97A5cuXYTKZ0NTUhJ6eHrS3t8PtduPMmTMwmUzIyMjApUuXAABPP/00Tp06BbvdjitXrkBVVdTW1mLv3r1477330N3djdHRUTQ3N6O/vx8XL15ETk4Ozp49i+HhYfh8PqSlpaGqqgolJSXo7e3Fhg0bcPLkSbz66qs4d+4cvv/+e5SXl6OysvJ2iNB3ycTEBFatWgWfz4eMjAykp6cjJycHFRUVsFqtKCkp4Qc6hYWFKCsrg9PpxNzcHCwWC1RVhd1uRyAQwMaNGyHLMkRRREFBAQwGAyYmJpCTk8MPVYLBILZt24aHHnoIWVlZcLvdcDgcGB8fhyzLsNlsEAQB+fn5EEURjDGkp6fzPV5SUoLs7Gwet7Kzs2GxWCBJEtxuN65fv47c3FxIkgSn04nS0lIUFhZCEATIsozc3Fx4PB5EIpE/GWh8tUlEuHHjBgKBAPr6+mA0GuH3+2G1WtHV1YWZmRkAQDgcRjAYxOzsLMrLy/mB7/T0NMbHx3HhwgV+OKyqKqfL09PT6O3tBQDk5ubi8OHDOHXqFKanp9HX1wen0wmDwQCLxYJbt27hsccew8MPP4zBwUFMTk7C7/ejpqYGU1NTKC4uxpo1awAARqMR33zzDXp7e0FEsFqtkCQJZrMZ4XAYsVgMwWAQoVAIADAzM4MbN26go6MDmZmZf15vaJpGjDEEAgFIkgRFUTA7Owu/3w+Px4Ph4WG43W5cvHgR+fn5yMvLQzgcxuTkJDIzM+Hz+SCKIsxmM0RRRCgUwuDgIMrLyzE3N8czjMViwc2bNxEKhfDAAw+AiNDe3g6Px4PR0VHEYjEUFBRgYmKCT0QURdhsNkxNTUEQBITDYb6ykiQhHA7D6XQiEomgs7MTBQUFsNls0DQNs7OzMJlMEASB93Hfffehu7sbRqMRdrsdo6OjqK6uTmWTJbPJfEz0Qmt+Ttdz9PznC923LHbmob/TeU38Xcr8e4/4u5bF7lni+5p/PjNfN/4AOb6YTHlG6uI5BUYKjBQYKTBSYKTASIGRAuOvl/8CLXpj19jBtroAAAAASUVORK5CYII=" alt="CCW Auto Logo"></div>
+    <div>
+      <div class="brand-name">CCW AUTO</div>
+      <div class="brand-sub">POST-SALE OPERATIONS</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span id="syncStatus" style="font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace"></span>
+    <button onclick="loadFromSheet()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-family:'IBM Plex Sans Thai',sans-serif" title="โหลดข้อมูลจาก Google Sheet">🔄 Sync</button>
+    <button id="testConnBtn" onclick="testConnection()" style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:#60a5fa;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-family:'IBM Plex Sans Thai',sans-serif" title="ทดสอบการเชื่อมต่อ Google Sheet">🔌 ทดสอบการเชื่อมต่อ</button>
+    <span class="date-badge" id="dateDisplay"></span>
+    <span class="badge-admin">👤 ผู้บริหาร</span>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">เมนูหลัก</div>
+      <div class="nav-item active" id="nav-overview" onclick="switchView('overview')">
+        <div class="nav-dot" style="background:var(--accent)"></div>
+        ภาพรวมงานหลังขาย
+      </div>
+      <div class="nav-item" id="nav-registration" onclick="switchView('registration')">
+        <div class="nav-dot" style="background:var(--blue)"></div>
+        สถานะการจดทะเบียน
+      </div>
+      <div class="nav-item" id="nav-outsource" onclick="switchView('outsource')">
+        <div class="nav-dot" style="background:var(--green)"></div>
+        งาน Out Source
+      </div>
+      <div class="nav-item" id="nav-report" onclick="switchView('report')">
+        <div class="nav-dot" style="background:#c084fc"></div>
+        รายงานยอดขาย
+      </div>
+      <div class="nav-item" id="nav-customers" onclick="switchView('customers')">
+        <div class="nav-dot" style="background:#f472b6"></div>
+        ข้อมูลลูกค้า
+      </div>
+      <div class="nav-item" id="nav-payment" onclick="switchView('payment')">
+        <div class="nav-dot" style="background:#34d399"></div>
+        ยอดค้างชำระ
+      </div>
+      <div class="nav-item" id="nav-checklist" onclick="switchView('checklist')">
+        <div class="nav-dot" style="background:#fb923c"></div>
+        เช็คลิสต์ประจำวัน
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">สรุปยอดเดือนนี้</div>
+      <div class="summary-box">
+        <div class="summary-title" id="sum-month">—</div>
+        <div class="summary-row">
+          <span class="summary-key">ขายรถ</span>
+          <span class="summary-val" style="color:var(--accent)" id="sum-total">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-key">ยอดรวม</span>
+          <span class="summary-val" style="color:var(--green)" id="sum-revenue">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-key">รอส่งมอบ</span>
+          <span class="summary-val" style="color:var(--yellow)" id="sum-pending">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-key">รอทะเบียน</span>
+          <span class="summary-val" style="color:var(--red)" id="sum-reg">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-key">เสร็จสมบูรณ์</span>
+          <span class="summary-val" style="color:var(--green)" id="sum-done">—</span>
+        </div>
+        <div class="summary-row" style="margin-top:6px;padding-top:6px;border-top:1px dashed rgba(248,113,113,.3)">
+          <span class="summary-key" style="color:#f87171">ยอดคงค้าง</span>
+          <span class="summary-val" style="color:#f87171" id="sum-outstanding">—</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <!-- VIEW: ภาพรวม -->
+    <div id="view-overview">
+    <div class="page-header">
+      <div>
+        <div class="page-title">สถานะงานหลังการขาย</div>
+        <div class="page-sub">ติดตามการดำเนินงานทุกขั้นตอนหลังจากการซื้อขายรถบรรทุก</div>
+      </div>
+      <button class="add-btn" onclick="openAddModal()">＋ เพิ่มรายการขาย</button>
+    </div>
+
+    <!-- KPI -->
+    <div class="kpi-row">
+      <div class="kpi-card orange kpi-clickable" onclick="kpiClick('all')" title="ดูรถทั้งหมด">
+        <div class="kpi-label">รถทั้งหมดในระบบ</div>
+        <div class="kpi-value" id="kpi-total">—</div>
+        <div class="kpi-unit">คัน</div>
+        <div class="kpi-sub" id="kpi-total-sub">—</div>
+        <div class="kpi-hint">คลิกเพื่อดูทั้งหมด →</div>
+      </div>
+      <div class="kpi-card blue kpi-clickable" onclick="kpiClick('active')" title="ดูรถที่กำลังดำเนินการ">
+        <div class="kpi-label">อยู่ระหว่างดำเนินการ</div>
+        <div class="kpi-value" id="kpi-active">—</div>
+        <div class="kpi-unit">คัน</div>
+        <div class="kpi-sub">ยังไม่ส่งมอบ / ทะเบียนค้างอยู่</div>
+        <div class="kpi-hint">คลิกเพื่อกรอง →</div>
+      </div>
+      <div class="kpi-card green kpi-clickable" onclick="kpiClick('revenue')" title="ดูรายงานยอดขาย">
+        <div class="kpi-label">ยอดขายรวม</div>
+        <div class="kpi-value" id="kpi-revenue">—</div>
+        <div class="kpi-unit">บาท</div>
+        <div class="kpi-sub" id="kpi-revenue-sub">—</div>
+        <div class="kpi-hint">คลิกเพื่อดูรายงาน →</div>
+      </div>
+      <div class="kpi-card red kpi-clickable" onclick="kpiClick('reg')" title="ดูรถที่รอจดทะเบียน">
+        <div class="kpi-label">รอจดทะเบียน</div>
+        <div class="kpi-value" id="kpi-reg">—</div>
+        <div class="kpi-unit">คัน</div>
+        <div class="kpi-sub">มัดจำทะเบียน ฿50K แล้ว</div>
+        <div class="kpi-hint">คลิกเพื่อกรอง →</div>
+      </div>
+    </div>
+
+    <!-- PIPELINE OVERVIEW -->
+    <div class="pipeline-bar">
+      <div class="pipeline-title">Pipeline ขั้นตอนหลังการขาย</div>
+      <div class="steps-row" id="pipelineSteps">
+        <!-- rendered by JS -->
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-title">รายละเอียดรถแต่ละคัน</div>
+        <div class="filter-row">
+          <button class="filter-btn active" onclick="filterTable('all', this)">ทั้งหมด</button>
+          <button class="filter-btn" onclick="filterTable('active', this)">กำลังดำเนินการ</button>
+          <button class="filter-btn" onclick="filterTable('reg', this)">รอทะเบียน</button>
+          <button class="filter-btn" onclick="filterTable('done', this)">เสร็จแล้ว</button>
+        </div>
+      </div>
+      <table id="mainTable">
+        <thead>
+          <tr>
+            <th>รหัสคัน</th>
+            <th>ประเภท</th>
+            <th>ยี่ห้อ / รุ่น</th>
+            <th>ลูกค้า</th>
+            <th>ราคา</th>
+            <th>ขั้นตอนปัจจุบัน</th>
+            <th>ผู้รับผิดชอบ</th>
+            <th>ทะเบียน</th>
+            <th>ความคืบหน้า</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    </div><!-- end view-overview -->
+
+    <!-- VIEW: สถานะการจดทะเบียน -->
+    <div id="view-registration" style="display:none">
+      <div class="page-header">
+        <div>
+          <div class="page-title">สถานะการจดทะเบียน</div>
+          <div class="page-sub">ติดตามความคืบหน้าการจดทะเบียนรถบรรทุกกับกรมขนส่ง</div>
+        </div>
+      </div>
+
+      <!-- KPI -->
+      <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px">
+        <div class="kpi-card" style="border-top:3px solid #a78bfa">
+          <div class="kpi-label">รถต้องการทะเบียน</div>
+          <div class="kpi-value" id="reg-kpi-all" style="color:#a78bfa">—</div>
+          <div class="kpi-unit">คัน</div>
+        </div>
+        <div class="kpi-card" style="border-top:3px solid #3b82f6">
+          <div class="kpi-label">ยื่นเอกสารแล้ว</div>
+          <div class="kpi-value" id="reg-kpi-submitted" style="color:#60a5fa">—</div>
+          <div class="kpi-unit">คัน</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-label">อนุมัติแล้ว</div>
+          <div class="kpi-value" id="reg-kpi-approved">—</div>
+          <div class="kpi-unit">คัน</div>
+        </div>
+        <div class="kpi-card" style="border-top:3px solid #f5a623">
+          <div class="kpi-label">ส่งพัสดุสำเร็จ</div>
+          <div class="kpi-value" id="reg-kpi-sent" style="color:#f5a623">—</div>
+          <div class="kpi-unit">คัน</div>
+        </div>
+      </div>
+
+      <div id="regCardList"></div>
+    </div>
+
+    <!-- VIEW: งาน Out Source -->
+    <div id="view-outsource" style="display:none">
+      <div class="page-header">
+        <div>
+          <div class="page-title">งาน Out Source</div>
+          <div class="page-sub">ติดตามสถานะงานที่มอบให้ผู้รับเหมาภายนอก — แก้ไขสถานะได้ที่นี่เลย</div>
+        </div>
+      </div>
+
+      <!-- KPI -->
+      <div class="kpi-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:24px">
+        <div class="kpi-card" style="border-top:3px solid #eab308">
+          <div class="kpi-label">รอดำเนินการ</div>
+          <div class="kpi-value" id="os-kpi-pending" style="color:#eab308">—</div>
+          <div class="kpi-unit">งาน</div>
+        </div>
+        <div class="kpi-card blue">
+          <div class="kpi-label">กำลังดำเนินการ</div>
+          <div class="kpi-value" id="os-kpi-inprog">—</div>
+          <div class="kpi-unit">งาน</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-label">สำเร็จแล้ว</div>
+          <div class="kpi-value" id="os-kpi-done">—</div>
+          <div class="kpi-unit">งาน</div>
+        </div>
+      </div>
+
+      <!-- filter -->
+      <div class="filter-row" style="margin-bottom:18px">
+        <button class="filter-btn active" id="os-f-all"     onclick="filterOutsource('all',this)">ทั้งหมด</button>
+        <button class="filter-btn"        onclick="filterOutsource('pending',this)">⏳ รอดำเนินการ</button>
+        <button class="filter-btn"        onclick="filterOutsource('inprog',this)">🔄 กำลังดำเนินการ</button>
+        <button class="filter-btn"        onclick="filterOutsource('done',this)">✅ สำเร็จแล้ว</button>
+      </div>
+
+      <!-- cards -->
+      <div id="outsourceCardList"></div>
+    </div>
+
+    <!-- VIEW: รายงานยอดขาย -->
+    <div id="view-report" style="display:none">
+      <div class="page-header">
+        <div>
+          <div class="page-title">รายงานยอดขาย</div>
+          <div class="page-sub">สรุปยอดขายและสถิติประจำเดือน</div>
+        </div>
+      </div>
+      <div class="kpi-row" style="margin-bottom:28px">
+        <div class="kpi-card orange">
+          <div class="kpi-label">รถทั้งหมดในระบบ</div>
+          <div class="kpi-value" id="rpt-total">0</div>
+          <div class="kpi-unit">คัน</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-label">ยอดขายรวม (M)</div>
+          <div class="kpi-value" id="rpt-revenue">0</div>
+          <div class="kpi-unit">ล้านบาท</div>
+        </div>
+        <div class="kpi-card blue">
+          <div class="kpi-label">ส่งมอบแล้ว</div>
+          <div class="kpi-value" id="rpt-done">0</div>
+          <div class="kpi-unit">คัน</div>
+        </div>
+        <div class="kpi-card red">
+          <div class="kpi-label">รอดำเนินการ</div>
+          <div class="kpi-value" id="rpt-pending">0</div>
+          <div class="kpi-unit">คัน</div>
+        </div>
+      </div>
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title">รายการขายทั้งหมด</div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>รหัสคัน</th><th>ยี่ห้อ / รุ่น</th><th>ลูกค้า</th><th>ราคาขาย</th><th>ขั้นตอน</th><th>สถานะ</th>
+            </tr>
+          </thead>
+          <tbody id="reportTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- VIEW: ข้อมูลลูกค้า -->
+    <div id="view-customers" style="display:none">
+      <div class="page-header">
+        <div>
+          <div class="page-title">ข้อมูลลูกค้า</div>
+          <div class="page-sub">สรุปประวัติการซื้อและยอดรวมของลูกค้าแต่ละราย</div>
+        </div>
+      </div>
+
+      <!-- Customer KPI -->
+      <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:28px">
+        <div class="kpi-card" style="border-top:3px solid #f472b6">
+          <div class="kpi-label">ลูกค้าทั้งหมด</div>
+          <div class="kpi-value" id="cust-total" style="color:#f472b6">—</div>
+          <div class="kpi-unit">ราย</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-label">ยอดขายรวม</div>
+          <div class="kpi-value" id="cust-revenue">—</div>
+          <div class="kpi-unit">บาท</div>
+        </div>
+        <div class="kpi-card" style="border-top:3px solid #f59e0b">
+          <div class="kpi-label">ลูกค้าที่ค้างชำระ</div>
+          <div class="kpi-value" id="cust-owing-count" style="color:#f59e0b">—</div>
+          <div class="kpi-unit">ราย</div>
+        </div>
+        <div class="kpi-card red">
+          <div class="kpi-label">ยอดค้างทั้งหมด</div>
+          <div class="kpi-value" id="cust-owing-total">—</div>
+          <div class="kpi-unit">บาท</div>
+        </div>
+      </div>
+
+      <!-- Customer Cards Grid -->
+      <div id="customerGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px"></div>
+    </div>
+
+    <!-- VIEW: ยอดค้างชำระ -->
+    <div id="view-payment" style="display:none">
+      <div class="page-header">
+        <div>
+          <div class="page-title">ยอดค้างชำระ</div>
+          <div class="page-sub">ติดตามสถานะมัดจำและยอดค้างจ่ายของลูกค้าแต่ละราย</div>
+        </div>
+      </div>
+
+      <!-- Payment KPI -->
+      <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:28px">
+        <div class="kpi-card red">
+          <div class="kpi-label">ยอดค้างชำระรวม</div>
+          <div class="kpi-value" id="pay-outstanding">—</div>
+          <div class="kpi-unit">บาท</div>
+        </div>
+        <div class="kpi-card" style="border-top:3px solid #f59e0b">
+          <div class="kpi-label">ยังไม่มัดจำ</div>
+          <div class="kpi-value" id="pay-no-deposit" style="color:#f59e0b">—</div>
+          <div class="kpi-unit">คัน</div>
+        </div>
+        <div class="kpi-card blue">
+          <div class="kpi-label">มัดจำแล้ว / รอยอดเต็ม</div>
+          <div class="kpi-value" id="pay-deposited">—</div>
+          <div class="kpi-unit">คัน</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-label">ชำระเต็มจำนวนแล้ว</div>
+          <div class="kpi-value" id="pay-fullpaid">—</div>
+          <div class="kpi-unit">คัน</div>
+        </div>
+      </div>
+
+      <!-- Payment Table -->
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title">รายการค้างชำระแต่ละคัน</div>
+          <div class="filter-row">
+            <button class="filter-btn active" id="pay-filter-all" onclick="filterPayment('all',this)">ทั้งหมด</button>
+            <button class="filter-btn" onclick="filterPayment('unpaid',this)">ยังไม่มัดจำ</button>
+            <button class="filter-btn" onclick="filterPayment('deposited',this)">มัดจำแล้ว</button>
+            <button class="filter-btn" onclick="filterPayment('fullpaid',this)">ชำระเต็มแล้ว</button>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>รหัสคัน</th>
+              <th>ยี่ห้อ / รุ่น</th>
+              <th>ลูกค้า</th>
+              <th>ราคาเต็ม</th>
+              <th>ยอดมัดจำ</th>
+              <th>สถานะมัดจำ</th>
+              <th>ยอดค้างชำระ</th>
+              <th>สถานะรวม</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="paymentTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- VIEW: เช็คลิสต์ประจำวัน -->
+    <div id="view-checklist" style="display:none">
+      <div class="page-header">
+        <div>
+          <div class="page-title">เช็คลิสต์ประจำวัน</div>
+          <div class="page-sub">งานที่ต้องทำวันนี้ — อัตโนมัติจากระบบ + เพิ่มเองได้</div>
+        </div>
+      </div>
+
+      <!-- date nav -->
+      <div class="cl-top" id="clDateNav"></div>
+
+      <!-- progress -->
+      <div class="cl-progress-bar"><div class="cl-progress-fill" id="clProgressFill" style="width:0%"></div></div>
+      <div class="cl-stat-row" id="clStatRow"></div>
+
+      <!-- auto tasks -->
+      <div class="cl-section">
+        <div class="cl-section-title">📋 งานจากระบบ (อัตโนมัติ)</div>
+        <div id="clAutoList"></div>
+      </div>
+
+      <!-- custom tasks -->
+      <div class="cl-section">
+        <div class="cl-section-title">✏️ งานที่เพิ่มเอง</div>
+        <div id="clCustomList"></div>
+        <div class="cl-add-row" style="margin-top:12px">
+          <input class="cl-add-input" id="clNewTask" placeholder="เพิ่ม task ใหม่..." onkeydown="if(event.key==='Enter')addCustomTask()">
+          <button class="cl-add-btn" onclick="addCustomTask()">+ เพิ่ม</button>
+        </div>
+      </div>
+
+      <!-- history -->
+      <div class="cl-section" id="clHistorySection" style="display:none">
+        <div class="cl-section-title">📅 ประวัติย้อนหลัง</div>
+        <div id="clHistoryList"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-head-title" id="modalTitle">รายละเอียดขั้นตอน</div>
+        <div class="modal-head-sub" id="modalSub"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal" style="width:720px">
+    <div class="modal-head">
+      <div>
+        <div class="modal-head-title">✏️ แก้ไขข้อมูลรถ</div>
+        <div class="modal-head-sub" id="editModalSub">กรอกข้อมูลที่ต้องการแก้ไข</div>
+      </div>
+      <button class="modal-close" onclick="closeEditModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editId">
+
+      <div class="modal-section-title">ข้อมูลทั่วไป</div>
+      <div class="modal-2col">
+        <div class="modal-field">
+          <label>ยี่ห้อ / รุ่น</label>
+          <input class="modal-input" id="editModel" placeholder="เช่น Hino 700 Series">
+        </div>
+        <div class="modal-field">
+          <label>ประเภทรถ</label>
+          <select class="modal-select" id="editWheelType">
+            <option value="">— ไม่ระบุ —</option>
+            <option value="6 ล้อ">6 ล้อ</option>
+            <option value="10 ล้อ">10 ล้อ</option>
+            <option value="12 ล้อ">12 ล้อ</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>ชื่อลูกค้า</label>
+        <input class="modal-input" id="editCustomer" placeholder="ชื่อ-นามสกุล หรือบริษัท">
+      </div>
+      <div class="modal-field">
+        <label>ราคาขาย (บาท)</label>
+        <input class="modal-input" type="number" id="editPrice" placeholder="1500000">
+      </div>
+
+      <div class="modal-section-title">💰 สถานะการชำระเงิน</div>
+      <div class="modal-2col">
+        <div class="modal-field">
+          <label>ยอดมัดจำ (บาท)</label>
+          <input class="modal-input" type="number" id="editDeposit" placeholder="เช่น 100000">
+        </div>
+        <div class="modal-field">
+          <label>สถานะมัดจำ</label>
+          <select class="modal-select" id="editDepositStatus">
+            <option value="pending">ยังไม่ได้มัดจำ</option>
+            <option value="paid">มัดจำแล้ว ✅</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>สถานะชำระเต็มจำนวน</label>
+        <select class="modal-select" id="editPaymentStatus">
+          <option value="unpaid">ยังค้างอยู่</option>
+          <option value="paid">ชำระเต็มจำนวนแล้ว ✅</option>
+        </select>
+      </div>
+
+      <div class="modal-section-title">ขั้นตอนและสถานะ</div>
+      <div class="modal-2col">
+        <div class="modal-field">
+          <label>ขั้นตอนปัจจุบัน</label>
+          <select class="modal-select" id="editStage">
+            <option value="1">1 — มัดจำ / เปิดบิล</option>
+            <option value="2">2 — ตรวจสภาพก่อนส่งมอบ</option>
+            <option value="3">3 — นัดหมายวันส่งมอบ</option>
+            <option value="4">4 — ซ่อมตาม Req. ลูกค้า</option>
+            <option value="5">5 — ตรวจสภาพรอบสุดท้าย</option>
+            <option value="6">6 — ลูกค้ารับรถแล้ว</option>
+            <option value="7">7 — จดทะเบียน / ปิดการขาย</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label>ต้องการทะเบียน</label>
+          <select class="modal-select" id="editReg">
+            <option value="no">ไม่ต้องการทะเบียน</option>
+            <option value="yes">ต้องการทะเบียน (มัดจำ ฿50,000)</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="editRegSection" style="display:none">
+        <div class="modal-section-title">สถานะทะเบียน</div>
+        <div class="modal-2col">
+          <div class="modal-field">
+            <label>สถานะการยื่นทะเบียน</label>
+            <select class="modal-select" id="editRegStatus">
+              <option value="waiting_deposit">รอมัดจำทะเบียน</option>
+              <option value="pending_approval">ยื่นแล้ว — รออนุมัติ</option>
+              <option value="sent">อนุมัติแล้ว — ส่งไปรษณีย์แล้ว</option>
+            </select>
+          </div>
+          <div class="modal-field">
+            <label>เลขพัสดุ (ถ้ามี)</label>
+            <input class="modal-input" id="editTrackingNo" placeholder="เช่น EF123456789TH">
+          </div>
+        </div>
+        <div class="modal-2col">
+          <div class="modal-field">
+            <label>📅 วันที่ยื่นเอกสาร</label>
+            <input class="modal-input" type="date" id="editRegSubmitDate">
+          </div>
+          <div class="modal-field">
+            <label>📅 วันที่ได้รับทะเบียน</label>
+            <input class="modal-input" type="date" id="editRegApproveDate">
+          </div>
+        </div>
+        <div class="modal-field" style="max-width:260px">
+          <label>📅 วันที่ส่งพัสดุ</label>
+          <input class="modal-input" type="date" id="editRegSentDate">
+        </div>
+      </div>
+
+      <div class="modal-section-title">หมายเหตุ</div>
+      <div class="modal-field">
+        <label>หมายเหตุ / อัปเดตล่าสุด</label>
+        <textarea class="modal-input" id="editNote" rows="3" placeholder="บันทึกสถานะหรือข้อมูลเพิ่มเติม..." style="resize:vertical"></textarea>
+      </div>
+
+      <div class="modal-section-title">งาน Out Source</div>
+      <div class="modal-field">
+        <label>รายการ Out Source (คั่นด้วยจุลภาค)</label>
+        <input class="modal-input" id="editOutsource" placeholder="เช่น กะบะ, ต่อท้ายแชสซี">
+      </div>
+      <div class="modal-2col">
+        <div class="modal-field">
+          <label>สถานะงาน Out Source</label>
+          <select class="modal-select" id="editOutsourceStatus">
+            <option value="pending">⏳ รอดำเนินการ</option>
+            <option value="inprog">🔄 กำลังดำเนินการ</option>
+            <option value="done">✅ สำเร็จแล้ว</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label>วันที่นัดส่งมอบงาน</label>
+          <input class="modal-input" type="date" id="editOutsourceDue">
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeEditModal()">ยกเลิก</button>
+        <button class="btn-save" onclick="saveEdit()">💾 บันทึกการแก้ไข</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">✅ บันทึกสำเร็จ</div>
+
+<!-- ADD MODAL -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-head-title">เพิ่มรายการขายใหม่</div>
+        <div class="modal-head-sub">กรอกข้อมูลหลังการซื้อขาย</div>
+      </div>
+      <button class="modal-close" onclick="closeAddModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label>รหัสคัน / ทะเบียนเดิม</label>
+        <input class="modal-input" placeholder="เช่น CCW-009" id="newId">
+      </div>
+      <div class="modal-2col">
+        <div class="modal-field">
+          <label>ยี่ห้อ / รุ่น</label>
+          <input class="modal-input" placeholder="เช่น Isuzu FRR 210" id="newModel">
+        </div>
+        <div class="modal-field">
+          <label>ประเภทรถ</label>
+          <select class="modal-select" id="newWheelType">
+            <option value="">— ไม่ระบุ —</option>
+            <option value="6 ล้อ">6 ล้อ</option>
+            <option value="10 ล้อ">10 ล้อ</option>
+            <option value="12 ล้อ">12 ล้อ</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>ชื่อลูกค้า</label>
+        <input class="modal-input" placeholder="ชื่อ-นามสกุล หรือบริษัท" id="newCustomer">
+      </div>
+      <div class="modal-field">
+        <label>ราคาขาย (บาท)</label>
+        <input class="modal-input" type="number" placeholder="1500000" id="newPrice">
+      </div>
+      <div class="modal-2col">
+        <div class="modal-field">
+          <label>ยอดมัดจำ (บาท)</label>
+          <input class="modal-input" type="number" placeholder="เช่น 100000" id="newDeposit">
+        </div>
+        <div class="modal-field">
+          <label>สถานะมัดจำ</label>
+          <select class="modal-select" id="newDepositStatus">
+            <option value="pending">ยังไม่ได้มัดจำ</option>
+            <option value="paid">มัดจำแล้ว ✅</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>ต้องการทะเบียนหรือไม่</label>
+        <select class="modal-select" id="newReg">
+          <option value="no">ไม่ต้องการทะเบียน</option>
+          <option value="yes">ต้องการทะเบียน (มัดจำ ฿50,000)</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeAddModal()">ยกเลิก</button>
+        <button class="btn-save" onclick="addNewTruck()">บันทึกรายการ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const STAGES = [
+  { id: 1, name: 'มัดจำ/เปิดบิล', person: 'บัญชี', color: '#f5a623' },
+  { id: 2, name: 'ตรวจสภาพก่อนส่งมอบ', person: 'ช่าง', color: '#3b82f6' },
+  { id: 3, name: 'นัดหมายวันส่งมอบ', person: 'พี่แมน', color: '#a855f7' },
+  { id: 4, name: 'ซ่อมตาม Req. ลูกค้า', person: 'ช่าง / Out Source', color: '#eab308' },
+  { id: 5, name: 'ตรวจสภาพรถ', person: 'พี่แมน', color: '#22c55e' },
+  { id: 6, name: 'ลูกค้ารับรถ', person: 'ลูกค้า', color: '#4ade80' },
+  { id: 7, name: 'จดทะเบียน / ปิดการขาย', person: 'บัญชี / ขนส่ง', color: '#f87171' },
+];
+
+const DEFAULT_TRUCKS = [
+  { id: 'CCW-001', model: 'Hino 700 Series', customer: 'บริษัท ขนส่งดีเด่น จำกัด', price: 2800000, stage: 7, reg: true, regStatus: 'pending_approval', outsource: ['กะบะ', 'ต่อท้ายแชสซี'], note: 'มัดจำทะเบียนแล้ว รอกรมขนส่งอนุมัติ' },
+  { id: 'CCW-002', model: 'Isuzu FVZ 240', customer: 'คุณสมชาย วงศ์ใหญ่', price: 1950000, stage: 6, reg: false, outsource: [], note: 'ลูกค้ารับรถแล้ว รอส่งอินวอยซ์' },
+  { id: 'CCW-003', model: 'UD Trucks Quon', customer: 'ห้างหุ้นส่วน แสงทอง', price: 3200000, stage: 4, reg: true, regStatus: 'waiting_deposit', outsource: ['เลื่อนช่วงล้อ'], note: 'อยู่ระหว่างซ่อมตามที่ลูกค้าต้องการ' },
+  { id: 'CCW-004', model: 'Mitsubishi Fuso Super Great', customer: 'บริษัท ไทยโลจิสติกส์ จำกัด', price: 2600000, stage: 2, reg: false, outsource: [], note: 'ช่างกำลังตรวจเช็คสภาพรถก่อนส่งมอบ' },
+  { id: 'CCW-005', model: 'Hino 300 Dutro', customer: 'คุณประสิทธิ์ มั่นคง', price: 980000, stage: 5, reg: false, outsource: [], note: 'พี่แมนตรวจสภาพรอบสุดท้ายก่อนลูกค้ารับ' },
+  { id: 'CCW-006', model: 'Isuzu FRR 210', customer: 'คุณวิชัย ศรีดี', price: 1450000, stage: 7, reg: true, regStatus: 'sent', trackingNo: 'EF123456789TH', outsource: ['กะบะ'], note: 'ส่งทะเบียนทางไปรษณีย์แล้ว' },
+  { id: 'CCW-007', model: 'Hino 500 FC', customer: 'บริษัท สยามขนส่ง จำกัด', price: 1750000, stage: 3, reg: false, outsource: ['อื่นๆ'], note: 'นัดส่งมอบวันที่ 15 มี.ค. 68' },
+  { id: 'CCW-008', model: 'UD Trucks Condor', customer: 'คุณนภา รุ่งเรือง', price: 1480000, stage: 1, reg: false, outsource: [], note: 'เปิดบิลแล้ว รอฝ่ายบัญชีดำเนินการ' },
+];
+
+// ══════════════════════════════════════════════════════
+//  🔧 วาง URL ของ Google Apps Script ตรงนี้
+//  (ได้จากการ Deploy > New Deployment > Web App)
+// ══════════════════════════════════════════════════════
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby3YqwW33A3NqanXAEL_3LMg8ldQX5gLaZZSpXyGLtcAUqJ9lnxi_FCPhDn4NbPfzB9Lg/exec';
+
+let trucks = JSON.parse(JSON.stringify(DEFAULT_TRUCKS));
+let isSyncing = false;
+
+function setSyncStatus(msg, color = '#6b7280') {
+  const el = document.getElementById('syncStatus');
+  if (el) { el.textContent = msg; el.style.color = color; }
+}
+
+async function loadFromSheet() {
+  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
+    setSyncStatus('⚠️ ยังไม่ได้ตั้งค่า Google Sheet URL', '#eab308');
+    renderAll();
+    return;
+  }
+  setSyncStatus('🔄 กำลังโหลดจาก Google Sheet...', '#3b82f6');
+  try {
+    const res = await fetch(APPS_SCRIPT_URL + '?action=getAll', { redirect: 'follow' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.ok) {
+      // ── trucks ──
+      if (Array.isArray(data.trucks) && data.trucks.length > 0) {
+        trucks = data.trucks;
+      }
+      // ── checklist — โหลดจาก sheet แล้วเขียนลง localStorage ──
+      if (data.clCustom || data.clChecked) {
+        let clData = {};
+        // custom tasks
+        if (data.clCustom) {
+          Object.entries(data.clCustom).forEach(([dateKey, tasks]) => {
+            if (!clData[dateKey]) clData[dateKey] = { autoChecked: {}, custom: [] };
+            clData[dateKey].custom = tasks;
+          });
+        }
+        // auto checked
+        if (data.clChecked) {
+          Object.entries(data.clChecked).forEach(([dateKey, checkedMap]) => {
+            if (!clData[dateKey]) clData[dateKey] = { autoChecked: {}, custom: [] };
+            clData[dateKey].autoChecked = checkedMap;
+          });
+        }
+        try { localStorage.setItem('ccw_cl', JSON.stringify(clData)); } catch {}
+      }
+      setSyncStatus('✅ โหลดข้อมูลสำเร็จ · ' + (data.trucks ? data.trucks.length : 0) + ' รายการ', '#22c55e');
+    } else {
+      setSyncStatus('⚠️ Sheet ตอบกลับผิดรูปแบบ: ' + (data.error || ''), '#eab308');
+    }
+  } catch(err) {
+    setSyncStatus('❌ เชื่อมต่อ Sheet ไม่ได้: ' + err.message, '#ef4444');
+    console.error(err);
+  }
+  renderAll();
+}
+
+async function saveToSheet(truck) {
+  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') return;
+  setSyncStatus('🔄 กำลังบันทึก...', '#3b82f6');
+  try {
+    const params = new URLSearchParams({ action: 'upsertTruck', data: JSON.stringify(truck) });
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const result = await res.json();
+    if (result.ok) {
+      setSyncStatus('✅ บันทึกลง Google Sheet แล้ว', '#22c55e');
+    } else {
+      setSyncStatus('⚠️ บันทึกไม่สมบูรณ์: ' + (result.error || 'unknown'), '#eab308');
+    }
+  } catch(err) {
+    setSyncStatus('❌ บันทึกไม่สำเร็จ: ' + err.message, '#ef4444');
+    console.error(err);
+  }
+}
+
+// บันทึก checklist ลง Sheet (เรียกหลัง toggle หรือเพิ่ม task)
+async function saveClToSheet(dateKey) {
+  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') return;
+  const clData = clLoadData();
+  const day    = clData[dateKey] || { autoChecked: {}, custom: [] };
+
+  // save custom tasks
+  const customPayload = (day.custom || []).map(c => ({
+    id: c.id || String(c.ts), text: c.text, done: c.done, ts: c.ts
+  }));
+  const checkedIds = Object.keys(day.autoChecked || {}).filter(k => day.autoChecked[k]);
+
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ action: 'saveClCustom', dateKey, tasks: JSON.stringify(customPayload) }).toString(),
+    });
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ action: 'saveClChecked', dateKey, checkedIds: JSON.stringify(checkedIds) }).toString(),
+    });
+  } catch(err) {
+    console.warn('saveClToSheet error:', err);
+  }
+}
+
+async function testConnection() {
+  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
+    showToast('⚠️ ยังไม่ได้วาง Apps Script URL ในโค้ด'); return;
+  }
+  setSyncStatus('🔌 กำลังทดสอบการเชื่อมต่อ...', '#3b82f6');
+  const btn = document.getElementById('testConnBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ กำลังทดสอบ...'; }
+  try {
+    const res = await fetch(APPS_SCRIPT_URL + '?action=ping', { redirect: 'follow' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.ok || data.pong) {
+      setSyncStatus('✅ เชื่อมต่อสำเร็จ!', '#22c55e');
+      showToast('✅ Google Sheet เชื่อมต่อสำเร็จ!');
+    } else {
+      setSyncStatus('⚠️ ตอบกลับผิดรูปแบบ — ตรวจสอบ Apps Script', '#eab308');
+      showToast('⚠️ Script ตอบกลับแต่รูปแบบไม่ถูกต้อง');
+    }
+  } catch(err) {
+    setSyncStatus('❌ เชื่อมต่อไม่ได้: ' + err.message, '#ef4444');
+    showToast('❌ เชื่อมต่อไม่ได้ ดู Console สำหรับรายละเอียด');
+    console.error('Connection test failed:', err);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔌 ทดสอบการเชื่อมต่อ'; }
+  }
+}
+
+// ── Toast ──
+function showToast(msg = '✅ บันทึกสำเร็จ') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+const stageClass = { 1:'s1', 2:'s2', 3:'s3', 4:'s4', 5:'s5', 6:'s6', 7:'s7b' };
+const stageLabel = {
+  1:'มัดจำ / เปิดบิล',
+  2:'ตรวจสภาพก่อนส่งมอบ',
+  3:'นัดหมายส่งมอบ',
+  4:'ซ่อมตาม Requirement',
+  5:'ตรวจสภาพรอบสุดท้าย',
+  6:'ลูกค้ารับรถแล้ว',
+  7:'จดทะเบียน / ปิดการขาย',
+};
+const stagePerson = {
+  1:'บัญชี', 2:'ช่าง', 3:'พี่แมน', 4:'ช่าง / Out Source',
+  5:'พี่แมน', 6:'ลูกค้า', 7:'บัญชี + กรมขนส่ง',
+};
+const personColor = {
+  'บัญชี': '#f5a623', 'ช่าง': '#3b82f6', 'พี่แมน': '#a855f7',
+  'ช่าง / Out Source': '#eab308', 'ลูกค้า': '#22c55e', 'บัญชี + กรมขนส่ง': '#f87171'
+};
+
+function formatPrice(n) {
+  if (n >= 1000000) return '฿' + (n/1000000).toFixed(2).replace(/\.?0+$/, '') + 'M';
+  return '฿' + n.toLocaleString('th-TH');
+}
+function progress(stage) { return Math.round((stage / 7) * 100); }
+function progressColor(p) {
+  if (p === 100) return '#22c55e';
+  if (p >= 70) return '#3b82f6';
+  if (p >= 40) return '#f5a623';
+  return '#ef4444';
+}
+
+function renderPipeline() {
+  const counts = Array(8).fill(0);
+  trucks.forEach(t => counts[t.stage]++);
+  const el = document.getElementById('pipelineSteps');
+  el.innerHTML = STAGES.map(s => `
+    <div class="step-pill">
+      <div class="step-num" style="background:${s.color}22;color:${s.color};border:2px solid ${s.color}44">${s.id}</div>
+      <div class="step-name">${s.name}</div>
+      <div class="step-count">${counts[s.id]}</div>
+    </div>
+  `).join('');
+  updateKpiCards();
+}
+
+function updateKpiCards() {
+  const now = new Date();
+  const curMonth = now.getMonth();
+  const curYear  = now.getFullYear();
+  const monthTH  = now.toLocaleDateString('th-TH', { month: 'long', year: 'numeric', timeZone: 'Asia/Bangkok' });
+
+  // ── ตัวเลข KPI หลัก — ใช้ทุกคันในระบบ (ไม่ filter เดือน เพราะ stage เปลี่ยนตลอด)
+  const total   = trucks.length;
+  const active  = trucks.filter(t => t.stage < 6 || (t.reg && t.regStatus !== 'sent')).length;
+  const reg     = trucks.filter(t => t.reg && t.regStatus !== 'sent').length;
+  const done    = trucks.filter(t => (!t.reg && t.stage >= 6) || (t.reg && t.regStatus === 'sent')).length;
+  const pending = trucks.filter(t => t.stage < 6).length;
+  const revenue = trucks.reduce((s, t) => s + t.price, 0);
+  const avg     = total ? revenue / total : 0;
+
+  const outstanding = trucks.reduce((s, t) => {
+    if (t.paymentStatus === 'paid') return s;
+    return s + (t.price - (t.depositStatus === 'paid' ? (t.deposit || 0) : 0));
+  }, 0);
+
+  // KPI cards (main overview)
+  document.getElementById('kpi-total').textContent = total;
+  document.getElementById('kpi-total-sub').textContent = monthTH;
+  document.getElementById('kpi-active').textContent = active;
+  document.getElementById('kpi-revenue').textContent = (revenue / 1000000).toFixed(1) + 'M';
+  document.getElementById('kpi-revenue-sub').textContent = total + ' คัน × ราคาเฉลี่ย ' + (avg / 1000000).toFixed(2) + 'M';
+  document.getElementById('kpi-reg').textContent = reg;
+
+  // Sidebar summary — อัปเดตจาก trucks[] ปัจจุบันทั้งหมด
+  document.getElementById('sum-month').textContent     = monthTH;
+  document.getElementById('sum-total').textContent     = total   + ' คัน';
+  document.getElementById('sum-revenue').textContent   = '฿' + (revenue / 1000000).toFixed(2) + 'M';
+  document.getElementById('sum-pending').textContent   = pending + ' คัน';
+  document.getElementById('sum-reg').textContent       = reg     + ' คัน';
+  document.getElementById('sum-done').textContent      = done    + ' คัน';
+  document.getElementById('sum-outstanding').textContent = outstanding > 0
+    ? '฿' + (outstanding / 1000000).toFixed(2) + 'M'
+    : '✅ ครบทุกคัน';
+}
+
+function kpiClick(type) {
+  if (type === 'revenue') {
+    switchView('report');
+    return;
+  }
+  // ถ้าอยู่ใน view อื่น ให้กลับมา overview ก่อน
+  switchView('overview');
+  // map kpi type → filter key
+  const filterMap = { all: 'all', active: 'active', reg: 'reg' };
+  const f = filterMap[type] || 'all';
+  currentFilter = f;
+  // sync filter button UI
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    const match = b.getAttribute('onclick') && b.getAttribute('onclick').includes("'" + f + "'");
+    b.classList.toggle('active', match);
+  });
+  renderTable();
+  // scroll ลงไปที่ตาราง
+  setTimeout(() => {
+    document.querySelector('.table-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 50);
+}
+
+let currentFilter = 'all';
+function filterTable(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable();
+}
+
+function renderTable() {
+  const filtered = trucks.filter(t => {
+    if (currentFilter === 'active') return t.stage < 6 || (t.reg && t.regStatus !== 'sent');
+    if (currentFilter === 'reg')    return t.reg && t.regStatus !== 'sent';
+    if (currentFilter === 'done')   return (!t.reg && t.stage >= 6) || (t.reg && t.regStatus === 'sent');
+    return true;
+  });
+
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = filtered.map(t => {
+    const p = progress(t.stage);
+    const pc = personColor[stagePerson[t.stage]] || '#6b7280';
+    const initials = stagePerson[t.stage].charAt(0);
+    return `
+    <tr>
+      <td><span class="truck-id">${t.id}</span></td>
+      <td>${t.wheelType ? `<span class="wheel-badge">${t.wheelType}</span>` : '<span style="color:var(--muted);font-size:12px">—</span>'}</td>
+      <td><span class="customer-name">${t.model}</span></td>
+      <td>${t.customer}</td>
+      <td><span class="price-cell">${formatPrice(t.price)}</span></td>
+      <td><span class="stage-badge ${stageClass[t.stage]}"><span class="stage-dot"></span>${stageLabel[t.stage]}</span></td>
+      <td>
+        <span class="person-pill">
+          <span class="person-avatar" style="background:${pc}22;color:${pc}">${initials}</span>
+          ${stagePerson[t.stage]}
+        </span>
+      </td>
+      <td>${t.reg ? '<span class="reg-needed">📋 ต้องการ</span>' : '<span class="reg-none">—</span>'}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="progress-bar"><div class="progress-fill" style="width:${p}%;background:${progressColor(p)}"></div></div>
+          <span style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace">${p}%</span>
+        </div>
+      </td>
+      <td style="white-space:nowrap">
+        <button class="edit-btn" onclick="openEditModal('${t.id}')">✏️ แก้ไข</button>
+        <button onclick="openDetail('${t.id}')" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:5px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-family:'IBM Plex Sans Thai',sans-serif">รายละเอียด</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── EDIT MODAL ──
+function openEditModal(id) {
+  const t = trucks.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('editId').value = t.id;
+  document.getElementById('editModalSub').textContent = `รหัส: ${t.id}`;
+  document.getElementById('editModel').value = t.model;
+  document.getElementById('editWheelType').value = t.wheelType || '';
+  document.getElementById('editCustomer').value = t.customer;
+  document.getElementById('editPrice').value = t.price;
+  document.getElementById('editStage').value = t.stage;
+  document.getElementById('editReg').value = t.reg ? 'yes' : 'no';
+  document.getElementById('editNote').value = t.note || '';
+  document.getElementById('editOutsource').value = (t.outsource || []).join(', ');
+  document.getElementById('editOutsourceStatus').value = t.outsourceStatus || 'pending';
+  document.getElementById('editOutsourceDue').value = t.outsourceDue || '';
+  document.getElementById('editRegStatus').value = t.regStatus || 'waiting_deposit';
+  document.getElementById('editTrackingNo').value = t.trackingNo || '';
+  document.getElementById('editRegSubmitDate').value  = t.regSubmitDate  || '';
+  document.getElementById('editRegApproveDate').value = t.regApproveDate || '';
+  document.getElementById('editRegSentDate').value    = t.regSentDate    || '';
+  document.getElementById('editDeposit').value = t.deposit || '';
+  document.getElementById('editDepositStatus').value = t.depositStatus || 'pending';
+  document.getElementById('editPaymentStatus').value = t.paymentStatus || 'unpaid';
+  toggleRegSection();
+  document.getElementById('editModal').classList.add('open');
+}
+
+function toggleRegSection() {
+  const show = document.getElementById('editReg').value === 'yes';
+  document.getElementById('editRegSection').style.display = show ? 'block' : 'none';
+}
+document.getElementById('editReg').addEventListener('change', toggleRegSection);
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('open');
+}
+
+function saveEdit() {
+  const id = document.getElementById('editId').value;
+  const idx = trucks.findIndex(x => x.id === id);
+  if (idx === -1) return;
+
+  const reg = document.getElementById('editReg').value === 'yes';
+  const outsourceRaw = document.getElementById('editOutsource').value.trim();
+
+  trucks[idx] = {
+    ...trucks[idx],
+    model: document.getElementById('editModel').value.trim(),
+    wheelType: document.getElementById('editWheelType').value,
+    customer: document.getElementById('editCustomer').value.trim(),
+    price: parseInt(document.getElementById('editPrice').value) || trucks[idx].price,
+    stage: parseInt(document.getElementById('editStage').value),
+    reg,
+    regStatus: reg ? document.getElementById('editRegStatus').value : undefined,
+    trackingNo: reg && document.getElementById('editRegStatus').value === 'sent'
+      ? document.getElementById('editTrackingNo').value.trim()
+      : undefined,
+    regSubmitDate:  reg ? document.getElementById('editRegSubmitDate').value  || '' : '',
+    regApproveDate: reg ? document.getElementById('editRegApproveDate').value || '' : '',
+    regSentDate:    reg ? document.getElementById('editRegSentDate').value    || '' : '',
+    note: document.getElementById('editNote').value.trim(),
+    outsource: outsourceRaw ? outsourceRaw.split(',').map(s => s.trim()).filter(Boolean) : [],
+    outsourceStatus: document.getElementById('editOutsourceStatus').value,
+    outsourceDue: document.getElementById('editOutsourceDue').value || '',
+    deposit: parseInt(document.getElementById('editDeposit').value) || 0,
+    depositStatus: document.getElementById('editDepositStatus').value,
+    paymentStatus: document.getElementById('editPaymentStatus').value,
+  };
+
+  saveToSheet(trucks[idx]);
+  closeEditModal();
+  renderAll();
+  showToast('✅ บันทึกข้อมูลสำเร็จ');
+}
+
+// ── DETAIL MODAL ──
+function openDetail(id) {
+  const t = trucks.find(x => x.id === id);
+  if (!t) return;
+
+  document.getElementById('modalTitle').textContent = `${t.id} — ${t.model}`;
+  document.getElementById('modalSub').textContent = `ลูกค้า: ${t.customer} | ราคา: ${formatPrice(t.price)}`;
+
+  const steps = [
+    { n: 1, title: 'มัดจำ / เปิดบิล', person: '🧾 ฝ่ายบัญชี', note: 'บันทึกมัดจำ เปิดบิลการขาย' },
+    { n: 2, title: 'ตรวจเช็คสภาพรถก่อนส่งมอบ', person: '🔧 ช่าง', note: 'ตรวจสภาพรถทุกจุดก่อนส่งมอบให้ลูกค้า' },
+    { n: 3, title: 'นัดหมายวันส่งมอบ', person: '📅 พี่แมน', note: 'ติดต่อลูกค้า นัดวันรับรถ' },
+    {
+      n: 4, title: 'ซ่อมรถตาม Requirement ลูกค้า', person: '🔧 ช่าง / Out Source',
+      note: t.outsource && t.outsource.length ? `งาน Out Source: ${t.outsource.join(', ')}` : 'ไม่มีงาน Out Source',
+      outsource: t.outsource
+    },
+    { n: 5, title: 'ตรวจสภาพรถรอบสุดท้าย', person: '✅ พี่แมน', note: 'ตรวจความเรียบร้อยก่อนลูกค้ารับรถ' },
+    { n: 6, title: 'ลูกค้ารับรถ', person: '🚛 ลูกค้า', note: 'ส่งมอบรถให้ลูกค้าเรียบร้อย' },
+  ];
+
+  const noRegStep = `
+    <div class="p-step">
+      <div class="step-circle ${t.stage >= 6 && !t.reg ? 'step-complete' : 'step-pending'}">7A</div>
+      <div class="step-content">
+        <div class="step-content-title">ไม่รับทะเบียน — ส่งอินวอยซ์และใบกำกับภาษี</div>
+        <div class="step-content-person">🧾 ฝ่ายบัญชี</div>
+        <div class="step-content-note ${t.stage >= 6 && !t.reg ? 'highlight' : ''}">ส่งอินวอยซ์และใบกำกับภาษีให้ลูกค้าในภายหลัง — เป็นอันสิ้นสุดการซื้อขาย</div>
+      </div>
+    </div>`;
+
+  const regStatus = t.regStatus || '';
+  const regSteps = `
+    <div class="p-step">
+      <div class="step-circle ${t.reg ? (t.stage >= 6 ? 'step-complete' : 'step-pending') : 'step-pending'}">7B</div>
+      <div class="step-content">
+        <div class="step-content-title">ต้องการทะเบียน — มัดจำ ฿50,000</div>
+        <div class="step-content-person">💰 ฝ่ายบัญชี</div>
+        <div class="reg-branch">
+          <div class="reg-branch-title">ขั้นตอนย่อย</div>
+          <div class="reg-sub">
+            <div class="reg-sub-item">
+              <span class="reg-sub-icon">${regStatus === 'pending_approval' || regStatus === 'sent' ? '✅' : '⬜'}</span>
+              <span>7.2.1 ยื่นขอทะเบียนกับกรมขนส่ง</span>
+            </div>
+            <div class="reg-sub-item">
+              <span class="reg-sub-icon">${regStatus === 'sent' ? '✅' : regStatus === 'pending_approval' ? '🔄' : '⬜'}</span>
+              <span>7.2.2 ติดตามสถานะ — ${regStatus === 'pending_approval' ? 'รออนุมัติ' : regStatus === 'sent' ? 'อนุมัติแล้ว ส่งไปรษณีย์แล้ว' : 'ยังไม่ได้ยื่น'}</span>
+            </div>
+            <div class="reg-sub-item">
+              <span class="reg-sub-icon">${regStatus === 'sent' ? '📦' : '⬜'}</span>
+              <span>7.2.3 ส่งเลขพัสดุให้ลูกค้า ${t.trackingNo ? `— <strong style="color:var(--accent)">${t.trackingNo}</strong>` : ''}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  const stepsHtml = steps.map(s => {
+    const state = t.stage > s.n ? 'step-complete' : t.stage === s.n ? 'step-active' : 'step-pending';
+    return `
+      <div class="p-step">
+        <div class="step-circle ${state}">${s.n}</div>
+        <div class="step-content">
+          <div class="step-content-title">${s.title}</div>
+          <div class="step-content-person">${s.person}</div>
+          <div class="step-content-note ${t.stage === s.n ? 'highlight' : ''}">${t.stage === s.n ? t.note : s.note}</div>
+          ${s.outsource && s.outsource.length ? `<div class="outsource-tags">${s.outsource.map(o => `<span class="outsource-tag">🔗 ${o}</span>`).join('')}</div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('modalBody').innerHTML = `
+    <div style="margin-bottom:16px;padding:12px 16px;background:var(--surface2);border-radius:8px;display:flex;align-items:center;gap:12px;border:1px solid var(--border)">
+      <span class="stage-badge ${stageClass[t.stage]}"><span class="stage-dot"></span>${stageLabel[t.stage]}</span>
+      <span style="font-size:13px;color:var(--muted)">ความคืบหน้า ${progress(t.stage)}%</span>
+      <div class="progress-bar" style="width:120px"><div class="progress-fill" style="width:${progress(t.stage)}%;background:${progressColor(progress(t.stage))}"></div></div>
+    </div>
+    <div class="pipeline-steps">
+      ${stepsHtml}
+      ${t.reg ? regSteps : noRegStep}
+    </div>`;
+
+  document.getElementById('detailModal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('detailModal').classList.remove('open'); }
+function openAddModal() { document.getElementById('addModal').classList.add('open'); }
+function closeAddModal() { document.getElementById('addModal').classList.remove('open'); }
+
+function addNewTruck() {
+  const id = document.getElementById('newId').value.trim() || `CCW-00${trucks.length+1}`;
+  const model = document.getElementById('newModel').value.trim() || 'รถบรรทุก';
+  const wheelType = document.getElementById('newWheelType').value;
+  const customer = document.getElementById('newCustomer').value.trim() || 'ลูกค้าใหม่';
+  const price = parseInt(document.getElementById('newPrice').value) || 1000000;
+  const reg = document.getElementById('newReg').value === 'yes';
+
+  const newTruck = {
+    id, model, wheelType, customer, price, stage: 1, reg,
+    regStatus: reg ? 'waiting_deposit' : '',
+    outsource: [], note: 'เปิดบิลใหม่',
+    deposit: parseInt(document.getElementById('newDeposit').value) || 0,
+    depositStatus: document.getElementById('newDepositStatus').value,
+    paymentStatus: 'unpaid',
+  };
+  trucks.unshift(newTruck);
+  saveToSheet(newTruck);
+  closeAddModal();
+  renderAll();
+  document.getElementById('newId').value = '';
+  document.getElementById('newModel').value = '';
+  document.getElementById('newCustomer').value = '';
+  document.getElementById('newPrice').value = '';
+  showToast('✅ เพิ่มรายการสำเร็จ');
+}
+
+// ── VIEW SWITCHING ──
+const navIds = { overview: 'nav-overview', registration: 'nav-registration', outsource: 'nav-outsource', report: 'nav-report', customers: 'nav-customers', payment: 'nav-payment', checklist: 'nav-checklist' };
+const viewIds = { overview: 'view-overview', registration: 'view-registration', outsource: 'view-outsource', report: 'view-report', customers: 'view-customers', payment: 'view-payment', checklist: 'view-checklist' };
+
+function renderAll() {
+  updateKpiCards();
+  renderPipeline();
+  renderTable();
+  renderRegTable();
+  const activeView = Object.keys(viewIds).find(k => document.getElementById(viewIds[k]).style.display !== 'none') || 'overview';
+  if (activeView === 'outsource') renderOutsourceTable();
+  if (activeView === 'report') renderReportView();
+  if (activeView === 'customers') renderCustomerView();
+  if (activeView === 'payment') renderPaymentView();
+  if (activeView === 'checklist') renderChecklist();
+}
+
+function switchView(name) {
+  Object.keys(navIds).forEach(k => {
+    document.getElementById(navIds[k]).classList.toggle('active', k === name);
+    document.getElementById(viewIds[k]).style.display = k === name ? 'block' : 'none';
+  });
+  if (name === 'registration') renderRegTable();
+  if (name === 'outsource') renderOutsourceTable();
+  if (name === 'report') renderReportView();
+  if (name === 'customers') renderCustomerView();
+  if (name === 'payment') renderPaymentView();
+  if (name === 'checklist') renderChecklist();
+}
+
+function renderRegTable() {
+  const rows = trucks.filter(t => t.reg);
+  const container = document.getElementById('regCardList');
+
+  // KPI
+  document.getElementById('reg-kpi-all').textContent       = rows.length;
+  document.getElementById('reg-kpi-submitted').textContent = rows.filter(t => !!t.regSubmitDate).length;
+  document.getElementById('reg-kpi-approved').textContent  = rows.filter(t => !!t.regApproveDate).length;
+  document.getElementById('reg-kpi-sent').textContent      = rows.filter(t => !!t.regSentDate).length;
+  if (!rows.length) {
+    container.innerHTML = `<div style="text-align:center;color:var(--muted);padding:48px;font-size:14px">ไม่มีรถที่ต้องการทะเบียน</div>`;
+    return;
+  }
+
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  function fmtDate(d) {
+    if (!d) return null;
+    const dt = new Date(d + 'T00:00:00');
+    return dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+  }
+  function daysBetween(from, to) {
+    if (!from) return null;
+    const f = new Date(from + 'T00:00:00');
+    const t2 = to ? new Date(to + 'T00:00:00') : today;
+    return Math.round((t2 - f) / 86400000);
+  }
+
+  container.innerHTML = rows.map(t => {
+    const st = t.regStatus || 'waiting_deposit';
+
+    // --- Step 1: ยื่นเอกสาร ---
+    const s1done   = !!t.regSubmitDate;
+    const s1days   = s1done ? daysBetween(t.regSubmitDate, t.regApproveDate || null) : null;
+    const s1active = !s1done;
+
+    // --- Step 2: ได้รับทะเบียน ---
+    const s2done   = !!t.regApproveDate;
+    const s2days   = s2done ? daysBetween(t.regApproveDate, t.regSentDate || null) : (s1done ? daysBetween(t.regSubmitDate, null) : null);
+    const s2active = s1done && !s2done;
+
+    // --- Step 3: ส่งพัสดุ ---
+    const s3done   = !!t.regSentDate;
+    const s3active = s2done && !s3done;
+
+    // --- สรุปเวลาทั้งหมด ---
+    const totalDays = t.regSubmitDate
+      ? daysBetween(t.regSubmitDate, t.regSentDate || null)
+      : null;
+
+    const regBadge = {
+      waiting_deposit: `<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;background:rgba(234,179,8,.15);color:#eab308;border:1px solid rgba(234,179,8,.3)">⏳ รอมัดจำ</span>`,
+      pending_approval:`<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.3)">🔄 รออนุมัติ</span>`,
+      sent:            `<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(34,197,94,.3)">✅ เสร็จสิ้น</span>`,
+    }[st] || '';
+
+    function stepHtml(icon, title, dateVal, daysVal, isDone, isActive, extra='') {
+      const cls = isDone ? 'done' : isActive ? 'active' : '';
+      const dateStr = fmtDate(dateVal);
+      let meta = '';
+      if (dateStr) meta += `<span class="reg-step-date">${dateStr}</span>`;
+      if (daysVal !== null) {
+        const warn = daysVal > 30;
+        meta += `<span class="reg-step-days ${warn?'warn':'ok'}">${isDone && !isActive ? `ใช้เวลา ${daysVal} วัน` : `ผ่านมา ${daysVal} วันแล้ว`}</span>`;
+      }
+      if (extra) meta += `<span style="color:var(--accent);font-family:'IBM Plex Mono',monospace">${extra}</span>`;
+      return `
+        <div class="reg-step ${cls}">
+          <div class="reg-step-icon">${icon}</div>
+          <div class="reg-step-body">
+            <div class="reg-step-title">${title}</div>
+            ${meta ? `<div class="reg-step-meta">${meta}</div>` : ''}
+          </div>
+        </div>`;
+    }
+
+    return `
+    <div class="reg-card">
+      <div class="reg-card-top">
+        <div class="reg-card-info">
+          <div class="reg-card-id">${t.id}</div>
+          <div class="reg-card-model">${t.model}${t.wheelType ? ` <span class="wheel-badge">${t.wheelType}</span>` : ''}</div>
+          <div class="reg-card-customer">👤 ${t.customer}</div>
+        </div>
+        ${regBadge}
+        <button class="edit-btn" onclick="openEditModal('${t.id}')">✏️ แก้ไข</button>
+      </div>
+      <div class="reg-steps">
+        ${stepHtml(
+          s1done ? '✅' : s1active ? '🔵' : '⬜',
+          'ยื่นเอกสารแล้ว',
+          t.regSubmitDate,
+          s1done ? s1days : null,
+          s1done, s1active
+        )}
+        ${stepHtml(
+          s2done ? '✅' : s2active ? '🔵' : '⬜',
+          'ได้รับทะเบียนแล้ว',
+          t.regApproveDate,
+          s2active ? s2days : null,
+          s2done, s2active
+        )}
+        ${stepHtml(
+          s3done ? '✅' : s3active ? '🔵' : '⬜',
+          'ส่งพัสดุแล้ว',
+          t.regSentDate,
+          null,
+          s3done, s3active,
+          t.trackingNo ? `📦 ${t.trackingNo}` : ''
+        )}
+      </div>
+      ${t.regSubmitDate ? `
+      <div class="reg-summary">
+        <span class="reg-summary-label">${s3done ? '⏱ ใช้เวลาทั้งหมด' : '⏱ ดำเนินการมาแล้ว'}</span>
+        <span class="reg-summary-val">${totalDays} วัน${s3done ? ' (เสร็จสิ้น)' : ''}</span>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+let currentOsFilter = 'all';
+function filterOutsource(f, btn) {
+  currentOsFilter = f;
+  document.querySelectorAll('#view-outsource .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderOutsourceCards();
+}
+
+function renderOutsourceTable() { renderOutsourceView(); }
+
+function renderOutsourceView() {
+  const all = trucks.filter(t => t.outsource && t.outsource.length > 0);
+  document.getElementById('os-kpi-pending').textContent = all.filter(t => (t.outsourceStatus||'pending') === 'pending').length;
+  document.getElementById('os-kpi-inprog').textContent  = all.filter(t => t.outsourceStatus === 'inprog').length;
+  document.getElementById('os-kpi-done').textContent    = all.filter(t => t.outsourceStatus === 'done').length;
+  renderOutsourceCards();
+}
+
+function renderOutsourceCards() {
+  const all = trucks.filter(t => t.outsource && t.outsource.length > 0);
+  let rows = all;
+  if (currentOsFilter === 'pending') rows = all.filter(t => (t.outsourceStatus||'pending') === 'pending');
+  if (currentOsFilter === 'inprog')  rows = all.filter(t => t.outsourceStatus === 'inprog');
+  if (currentOsFilter === 'done')    rows = all.filter(t => t.outsourceStatus === 'done');
+
+  const container = document.getElementById('outsourceCardList');
+  if (!rows.length) {
+    container.innerHTML = `<div style="text-align:center;color:var(--muted);padding:48px;font-size:14px">ไม่มีงาน Out Source ในสถานะนี้</div>`;
+    return;
+  }
+
+  const osBadge = {
+    pending: `<span class="os-badge os-badge-pending">⏳ รอดำเนินการ</span>`,
+    inprog:  `<span class="os-badge os-badge-inprog">🔄 กำลังดำเนินการ</span>`,
+    done:    `<span class="os-badge os-badge-done">✅ สำเร็จแล้ว</span>`,
+  };
+
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  container.innerHTML = rows.map(t => {
+    const status = t.outsourceStatus || 'pending';
+    let dueLine = '';
+    if (t.outsourceDue) {
+      const due = new Date(t.outsourceDue + 'T00:00:00');
+      const diff = Math.round((due - today) / 86400000);
+      const dateStr = due.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+      if (status === 'done') {
+        dueLine = `<span class="os-due-date">📅 ${dateStr}</span>`;
+      } else if (diff < 0) {
+        dueLine = `<span class="os-due-date os-due-overdue">⚠️ เลยกำหนด ${Math.abs(diff)} วัน (${dateStr})</span>`;
+      } else if (diff === 0) {
+        dueLine = `<span class="os-due-date os-due-overdue">🔔 ครบกำหนดวันนี้!</span>`;
+      } else {
+        dueLine = `<span class="os-due-date">📅 นัดส่งมอบ ${dateStr} (อีก ${diff} วัน)</span>`;
+      }
+    }
+
+    return `
+    <div class="os-card" id="os-card-${t.id}">
+      <div class="os-card-top">
+        <div class="os-card-info">
+          <div class="os-card-id">${t.id}</div>
+          <div class="os-card-model">${t.model}</div>
+          <div class="os-card-customer">${t.customer}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+          ${osBadge[status]}
+          ${dueLine}
+        </div>
+        <div class="os-card-actions">
+          <button class="os-edit-btn" onclick="toggleOsEdit('${t.id}')">✏️ แก้ไขสถานะ</button>
+        </div>
+      </div>
+
+      <div style="margin-top:10px">
+        <div class="outsource-tags">${t.outsource.map(o => `<span class="outsource-tag">🔗 ${o}</span>`).join('')}</div>
+      </div>
+
+      <!-- inline edit panel -->
+      <div class="os-edit-panel" id="os-panel-${t.id}">
+        <div class="os-edit-row">
+          <div class="os-edit-field">
+            <span class="os-edit-label">สถานะงาน</span>
+            <select class="os-edit-select" id="os-sel-${t.id}">
+              <option value="pending" ${status==='pending'?'selected':''}>⏳ รอดำเนินการ</option>
+              <option value="inprog"  ${status==='inprog' ?'selected':''}>🔄 กำลังดำเนินการ</option>
+              <option value="done"    ${status==='done'   ?'selected':''}>✅ สำเร็จแล้ว</option>
+            </select>
+          </div>
+          <div class="os-edit-field">
+            <span class="os-edit-label">วันที่นัดส่งมอบ</span>
+            <input class="os-edit-input" type="date" id="os-due-${t.id}" value="${t.outsourceDue||''}">
+          </div>
+          <button class="os-save-btn" onclick="saveOsStatus('${t.id}')">💾 บันทึก</button>
+          <button class="os-cancel-btn" onclick="toggleOsEdit('${t.id}')">ยกเลิก</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleOsEdit(id) {
+  const panel = document.getElementById('os-panel-' + id);
+  panel.classList.toggle('open');
+}
+
+function saveOsStatus(id) {
+  const idx = trucks.findIndex(t => t.id === id);
+  if (idx === -1) return;
+  trucks[idx].outsourceStatus = document.getElementById('os-sel-' + id).value;
+  trucks[idx].outsourceDue    = document.getElementById('os-due-' + id).value || '';
+  saveToSheet(trucks[idx]);
+  renderOutsourceView();
+  showToast('✅ บันทึกสถานะ Out Source แล้ว');
+}
+
+function renderReportView() {
+  const total = trucks.length;
+  const done = trucks.filter(t => t.stage >= 6).length;
+  const pending = total - done;
+  const revenue = trucks.reduce((s, t) => s + t.price, 0);
+  document.getElementById('rpt-total').textContent = total;
+  document.getElementById('rpt-revenue').textContent = (revenue / 1000000).toFixed(1) + 'M';
+  document.getElementById('rpt-done').textContent = done;
+  document.getElementById('rpt-pending').textContent = pending;
+  document.getElementById('reportTableBody').innerHTML = trucks.map(t => {
+    const isDone = t.stage >= 6;
+    return `<tr>
+      <td class="truck-id">${t.id}</td>
+      <td>${t.model}</td>
+      <td class="customer-name">${t.customer}</td>
+      <td class="price-cell">${formatPrice(t.price)}</td>
+      <td><span class="stage-badge ${stageClass[t.stage]}"><span class="stage-dot"></span>${stageLabel[t.stage]}</span></td>
+      <td><span style="font-size:12px;font-weight:600;color:${isDone ? '#22c55e' : '#eab308'}">${isDone ? '✅ เสร็จสิ้น' : '⏳ กำลังดำเนินการ'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderCustomerView() {
+  const custMap = {};
+  trucks.forEach(t => {
+    if (!custMap[t.customer]) custMap[t.customer] = [];
+    custMap[t.customer].push(t);
+  });
+
+  const custList = Object.entries(custMap)
+    .map(([name, list]) => ({
+      name,
+      count: list.length,
+      total: list.reduce((s, t) => s + t.price, 0),
+      outstanding: list.reduce((s, t) => {
+        if (t.paymentStatus === 'paid') return s;
+        const dep = t.depositStatus === 'paid' ? (t.deposit || 0) : 0;
+        return s + (t.price - dep);
+      }, 0),
+      trucks: list,
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  const totalCust      = custList.length;
+  const totalRevenue   = custList.reduce((s, c) => s + c.total, 0);
+  const owingCount     = custList.filter(c => c.outstanding > 0).length;
+  const owingTotal     = custList.reduce((s, c) => s + c.outstanding, 0);
+
+  document.getElementById('cust-total').textContent        = totalCust;
+  document.getElementById('cust-revenue').textContent      = (totalRevenue / 1000000).toFixed(2) + 'M';
+  document.getElementById('cust-owing-count').textContent  = owingCount;
+  document.getElementById('cust-owing-total').textContent  = owingTotal > 0 ? (owingTotal / 1000000).toFixed(2) + 'M' : '✅ ครบ';
+
+  const palette = ['#f472b6','#f5a623','#3b82f6','#22c55e','#a855f7','#eab308','#f87171','#4ade80','#60a5fa','#fb923c'];
+  function custColor(name) {
+    let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
+    return palette[h % palette.length];
+  }
+  function initials(name) {
+    const parts = name.replace(/บริษัท|ห้างหุ้นส่วน|คุณ/g, '').trim().split(/\s+/);
+    return (parts[0][0] + (parts[1] ? parts[1][0] : parts[0][1] || '')).toUpperCase();
+  }
+  function custType(name) {
+    if (name.includes('บริษัท')) return '🏢 นิติบุคคล';
+    if (name.includes('ห้างหุ้นส่วน')) return '🤝 ห้างหุ้นส่วน';
+    return '👤 บุคคลธรรมดา';
+  }
+
+  document.getElementById('customerGrid').innerHTML = custList.map(c => {
+    const col = custColor(c.name);
+    const avg = c.total / c.count;
+    const doneCount = c.trucks.filter(t => t.stage >= 6).length;
+    const hasOutstanding = c.outstanding > 0;
+
+    // สถานะการชำระรายคัน
+    const truckRows = c.trucks.map(t => {
+      const fullPaid  = t.paymentStatus === 'paid';
+      const depPaid   = t.depositStatus === 'paid';
+      const remaining = fullPaid ? 0 : t.price - (depPaid ? (t.deposit || 0) : 0);
+      let payBadge;
+      if (fullPaid) {
+        payBadge = `<span style="font-size:10px;color:#4ade80;font-weight:600">✅ ครบแล้ว</span>`;
+      } else if (depPaid) {
+        payBadge = `<span style="font-size:10px;color:#60a5fa;font-weight:600">💰 ค้าง ${formatPrice(remaining)}</span>`;
+      } else {
+        payBadge = `<span style="font-size:10px;color:#f87171;font-weight:600">🔴 ค้าง ${formatPrice(remaining)}</span>`;
+      }
+      return `
+        <div class="cust-truck-row">
+          <span class="cust-truck-id">${t.id}</span>
+          <span class="cust-truck-model">${t.model}</span>
+          <span class="cust-truck-price">${formatPrice(t.price)}</span>
+          ${payBadge}
+        </div>`;
+    }).join('');
+
+    return `
+    <div class="cust-card" style="${hasOutstanding ? 'border-color:rgba(248,113,113,.25)' : ''}">
+      <div class="cust-header">
+        <div class="cust-avatar" style="background:${col}22;color:${col};border:2px solid ${col}44">
+          ${initials(c.name)}
+        </div>
+        <div>
+          <div class="cust-name">${c.name}</div>
+          <div class="cust-type">${custType(c.name)}</div>
+        </div>
+        ${c.count >= 2 ? `<span style="margin-left:auto;font-size:10px;padding:3px 8px;border-radius:12px;background:rgba(34,197,94,.12);color:#4ade80;font-weight:600;border:1px solid rgba(34,197,94,.25)">🔁 ลูกค้าประจำ</span>` : ''}
+      </div>
+
+      <div class="cust-stats" style="grid-template-columns:repeat(4,1fr)">
+        <div class="cust-stat">
+          <div class="cust-stat-val" style="color:${col}">${c.count}</div>
+          <div class="cust-stat-key">คันที่ซื้อ</div>
+        </div>
+        <div class="cust-stat">
+          <div class="cust-stat-val" style="color:var(--green)">${(c.total/1000000).toFixed(2)}M</div>
+          <div class="cust-stat-key">ยอดรวม (฿)</div>
+        </div>
+        <div class="cust-stat">
+          <div class="cust-stat-val" style="color:var(--blue)">${doneCount}/${c.count}</div>
+          <div class="cust-stat-key">ส่งมอบแล้ว</div>
+        </div>
+        <div class="cust-stat">
+          <div class="cust-stat-val" style="color:${hasOutstanding ? '#f87171' : '#4ade80'};font-size:${c.outstanding >= 1000000 ? '16px' : '20px'}">
+            ${hasOutstanding ? (c.outstanding >= 1000000 ? (c.outstanding/1000000).toFixed(2)+'M' : formatPrice(c.outstanding)) : '✅'}
+          </div>
+          <div class="cust-stat-key">ยอดค้างชำระ</div>
+        </div>
+      </div>
+
+      <div class="cust-divider"></div>
+      <div class="cust-trucks">${truckRows}</div>
+      <div class="cust-divider"></div>
+
+      <div class="cust-total-row">
+        <span class="cust-total-label">ยอดมัดจำรวม</span>
+        <span style="font-size:12px;color:#f5a623;font-family:'IBM Plex Mono',monospace;font-weight:600">${
+          c.trucks.some(t => t.depositStatus === 'paid' && t.deposit)
+            ? formatPrice(c.trucks.reduce((s,t) => s + (t.depositStatus==='paid' ? (t.deposit||0) : 0), 0))
+            : '—'
+        }</span>
+      </div>
+      <div class="cust-total-row" style="margin-top:6px">
+        <span class="cust-total-label">ยอดซื้อรวมทั้งหมด</span>
+        <span class="cust-total-val">${formatPrice(c.total)}</span>
+      </div>
+      ${hasOutstanding ? `
+      <div class="cust-total-row" style="margin-top:6px;padding-top:8px;border-top:1px dashed rgba(248,113,113,.3)">
+        <span class="cust-total-label" style="color:#f87171;font-weight:600">🔴 ยอดคงค้างรวม</span>
+        <span style="font-size:15px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:#f87171">${formatPrice(c.outstanding)}</span>
+      </div>` : `
+      <div class="cust-total-row" style="margin-top:6px;padding-top:8px;border-top:1px dashed rgba(34,197,94,.3)">
+        <span class="cust-total-label" style="color:#4ade80;font-weight:600">✅ ชำระครบทุกคัน</span>
+        <span style="font-size:13px;color:#4ade80;font-weight:600">—</span>
+      </div>`}
+    </div>`;
+  }).join('');
+}
+
+let currentPayFilter = 'all';
+function filterPayment(f, btn) {
+  currentPayFilter = f;
+  document.querySelectorAll('#view-payment .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderPaymentTable();
+}
+
+function renderPaymentView() {
+  const noDeposit = trucks.filter(t => t.paymentStatus !== 'paid' && t.depositStatus !== 'paid').length;
+  const deposited = trucks.filter(t => t.depositStatus === 'paid' && t.paymentStatus !== 'paid').length;
+  const fullPaid  = trucks.filter(t => t.paymentStatus === 'paid').length;
+  const outstanding = trucks
+    .filter(t => t.paymentStatus !== 'paid')
+    .reduce((s, t) => {
+      const dep = (t.depositStatus === 'paid' ? (t.deposit || 0) : 0);
+      return s + (t.price - dep);
+    }, 0);
+
+  document.getElementById('pay-outstanding').textContent = (outstanding / 1000000).toFixed(2) + 'M';
+  document.getElementById('pay-no-deposit').textContent  = noDeposit;
+  document.getElementById('pay-deposited').textContent   = deposited;
+  document.getElementById('pay-fullpaid').textContent    = fullPaid;
+  renderPaymentTable();
+}
+
+function renderPaymentTable() {
+  let rows = trucks;
+  if (currentPayFilter === 'unpaid')   rows = trucks.filter(t => t.depositStatus !== 'paid' && t.paymentStatus !== 'paid');
+  if (currentPayFilter === 'deposited') rows = trucks.filter(t => t.depositStatus === 'paid' && t.paymentStatus !== 'paid');
+  if (currentPayFilter === 'fullpaid') rows = trucks.filter(t => t.paymentStatus === 'paid');
+
+  const tbody = document.getElementById('paymentTableBody');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:32px">ไม่มีรายการ</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(t => {
+    const dep       = t.deposit || 0;
+    const depPaid   = t.depositStatus === 'paid';
+    const fullPaid  = t.paymentStatus === 'paid';
+    const remaining = fullPaid ? 0 : t.price - (depPaid ? dep : 0);
+
+    // badges
+    const depBadge = depPaid
+      ? `<span style="color:#22c55e;font-weight:600;font-size:12px">✅ มัดจำแล้ว</span>`
+      : `<span style="color:#f59e0b;font-weight:600;font-size:12px">⏳ ยังไม่มัดจำ</span>`;
+
+    let statusBadge;
+    if (fullPaid) {
+      statusBadge = `<span style="background:rgba(34,197,94,.15);color:#4ade80;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;border:1px solid rgba(34,197,94,.3)">✅ ชำระครบแล้ว</span>`;
+    } else if (depPaid) {
+      statusBadge = `<span style="background:rgba(59,130,246,.15);color:#60a5fa;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;border:1px solid rgba(59,130,246,.3)">💰 มัดจำแล้ว / ค้างยอดเต็ม</span>`;
+    } else {
+      statusBadge = `<span style="background:rgba(239,68,68,.12);color:#f87171;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;border:1px solid rgba(239,68,68,.25)">🔴 ยังไม่ชำระ</span>`;
+    }
+
+    return `<tr>
+      <td class="truck-id">${t.id}</td>
+      <td>${t.model}</td>
+      <td class="customer-name">${t.customer}</td>
+      <td class="price-cell">${formatPrice(t.price)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:${depPaid ? '#f5a623' : 'var(--muted)'}">
+        ${dep ? formatPrice(dep) : '—'}
+      </td>
+      <td>${depBadge}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:${remaining > 0 ? '#f87171' : '#22c55e'}">
+        ${remaining > 0 ? formatPrice(remaining) : '—'}
+      </td>
+      <td>${statusBadge}</td>
+      <td><button class="edit-btn" onclick="openEditModal('${t.id}')">✏️ แก้ไข</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── CHECKLIST SYSTEM ──
+// storage key: clData = { "YYYY-MM-DD": { autoChecked: {id: bool}, custom: [{id,text,done,ts}] } }
+
+function clDateKey(d) {
+  return d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' }); // YYYY-MM-DD
+}
+
+function clLoadData() {
+  try { return JSON.parse(localStorage.getItem('ccw_cl') || '{}'); } catch { return {}; }
+}
+function clSaveData(data) {
+  try { localStorage.setItem('ccw_cl', JSON.stringify(data)); } catch {}
+}
+
+function clGetDay(data, key) {
+  if (!data[key]) data[key] = { autoChecked: {}, custom: [] };
+  return data[key];
+}
+
+// สร้าง auto tasks จากข้อมูลรถปัจจุบัน
+function buildAutoTasks() {
+  const tasks = [];
+
+  // งานรถในระบบ — ดึงรถตามขั้นตอนที่ต้องดำเนินการ
+  const stageActions = {
+    1: 'ติดตามการชำระมัดจำ',
+    2: 'ตรวจสภาพรถก่อนส่งมอบ',
+    3: 'ยืนยันนัดหมายวันส่งมอบ',
+    4: 'ติดตามงาน Out Source / ซ่อม',
+    5: 'ตรวจสภาพรถรอบสุดท้าย',
+    6: 'เตรียมเอกสารส่งมอบ',
+  };
+  trucks.filter(t => t.stage <= 6).forEach(t => {
+    tasks.push({
+      id: 'truck-' + t.id,
+      text: `[${t.id}] ${stageActions[t.stage] || 'ติดตามสถานะ'} — ${t.customer}`,
+      tag: 'auto',
+      tagLabel: '🚛 รถในระบบ',
+      meta: `${t.model} · ขั้นตอน ${t.stage}`,
+    });
+  });
+
+  // งานทะเบียนค้าง
+  trucks.filter(t => t.reg && t.regStatus !== 'sent').forEach(t => {
+    const label = t.regStatus === 'waiting_deposit' ? 'รอมัดจำทะเบียน' : 'ยื่นทะเบียน — รออนุมัติ';
+    tasks.push({
+      id: 'reg-' + t.id,
+      text: `[${t.id}] ${label} — ${t.customer}`,
+      tag: 'reg',
+      tagLabel: '📋 ทะเบียน',
+      meta: t.model,
+    });
+  });
+
+  // ยอดค้างชำระ
+  trucks.filter(t => t.paymentStatus !== 'paid').forEach(t => {
+    const depPaid = t.depositStatus === 'paid';
+    const rem = t.price - (depPaid ? (t.deposit || 0) : 0);
+    tasks.push({
+      id: 'pay-' + t.id,
+      text: `[${t.id}] ติดตามยอดค้าง ${formatPrice(rem)} — ${t.customer}`,
+      tag: 'pay',
+      tagLabel: '💰 ค้างชำระ',
+      meta: depPaid ? 'มัดจำแล้ว รอยอดเต็ม' : 'ยังไม่มัดจำ',
+    });
+  });
+
+  return tasks;
+}
+
+let clViewDate = new Date();
+
+function renderChecklist() {
+  const data = clLoadData();
+  const todayKey = clDateKey(new Date());
+  const viewKey  = clDateKey(clViewDate);
+  const isToday  = viewKey === todayKey;
+  const day = clGetDay(data, viewKey);
+
+  // Date nav — วันนี้ + 6 วันก่อนหน้า
+  const navDiv = document.getElementById('clDateNav');
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    days.push(d);
+  }
+  navDiv.innerHTML = days.map(d => {
+    const k = clDateKey(d);
+    const active = k === viewKey ? 'active' : '';
+    const label = k === todayKey ? 'วันนี้' : d.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Bangkok' });
+    return `<button class="cl-date-btn ${active}" onclick="clSelectDate('${k}')">${label}</button>`;
+  }).join('');
+
+  // auto tasks (ใช้ข้อมูลรถปัจจุบันสำหรับวันนี้, วันก่อนหน้าใช้ snapshot ที่ check ไว้)
+  const autoTasks = isToday ? buildAutoTasks() : [];
+  const autoChecked = day.autoChecked || {};
+
+  const autoDiv = document.getElementById('clAutoList');
+  if (autoTasks.length === 0 && isToday) {
+    autoDiv.innerHTML = `<div class="cl-empty">✅ ไม่มีงานค้างในระบบ</div>`;
+  } else if (!isToday) {
+    // วันก่อนหน้า — แสดงเฉพาะ task ที่เคย check ไว้
+    const checkedIds = Object.keys(autoChecked).filter(id => autoChecked[id]);
+    autoDiv.innerHTML = checkedIds.length
+      ? checkedIds.map(id => `
+        <div class="cl-item done">
+          <div class="cl-checkbox"><span class="cl-check-mark">✓</span></div>
+          <div class="cl-body">
+            <div class="cl-text">${id.replace(/^(truck|reg|pay)-/, '')}</div>
+            <div class="cl-meta"><span class="cl-tag cl-tag-auto">ระบบ</span>ทำเสร็จแล้ว</div>
+          </div>
+        </div>`).join('')
+      : `<div class="cl-empty" style="padding:16px">ไม่มีบันทึกงานวันนี้</div>`;
+  } else {
+    autoDiv.innerHTML = autoTasks.map(t => {
+      const done = !!autoChecked[t.id];
+      const tagClass = { auto: 'cl-tag-auto', reg: 'cl-tag-reg', pay: 'cl-tag-pay' }[t.tag] || 'cl-tag-auto';
+      return `
+      <div class="cl-item ${done ? 'done' : ''}" onclick="clToggleAuto('${viewKey}','${t.id}',this)">
+        <div class="cl-checkbox"><span class="cl-check-mark">✓</span></div>
+        <div class="cl-body">
+          <div class="cl-text">${t.text}</div>
+          <div class="cl-meta"><span class="cl-tag ${tagClass}">${t.tagLabel}</span>${t.meta}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // custom tasks
+  const customs = day.custom || [];
+  const customDiv = document.getElementById('clCustomList');
+  const addRow = document.querySelector('.cl-add-row');
+  if (!isToday && addRow) addRow.style.display = 'none';
+  if (isToday && addRow) addRow.style.display = 'flex';
+
+  customDiv.innerHTML = customs.length
+    ? customs.map((c, i) => `
+      <div class="cl-item ${c.done ? 'done' : ''}" onclick="clToggleCustom('${viewKey}',${i},this)">
+        <div class="cl-checkbox"><span class="cl-check-mark">✓</span></div>
+        <div class="cl-body">
+          <div class="cl-text">${c.text}</div>
+          <div class="cl-meta"><span class="cl-tag cl-tag-custom">✏️ เพิ่มเอง</span>${new Date(c.ts).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div>
+        </div>
+        ${isToday ? `<button class="cl-delete" onclick="event.stopPropagation();clDeleteCustom('${viewKey}',${i})">✕</button>` : ''}
+      </div>`).join('')
+    : (isToday ? '' : `<div class="cl-empty" style="padding:16px">ไม่มี task ที่เพิ่มเอง</div>`);
+
+  // progress + stats
+  const totalAuto   = isToday ? autoTasks.length : Object.keys(autoChecked).length;
+  const doneAuto    = isToday ? autoTasks.filter(t => autoChecked[t.id]).length : Object.keys(autoChecked).filter(id => autoChecked[id]).length;
+  const totalCustom = customs.length;
+  const doneCustom  = customs.filter(c => c.done).length;
+  const total = totalAuto + totalCustom;
+  const done  = doneAuto  + doneCustom;
+  const pct   = total > 0 ? Math.round(done / total * 100) : 0;
+
+  document.getElementById('clProgressFill').style.width = pct + '%';
+  document.getElementById('clStatRow').innerHTML = `
+    <div class="cl-stat-chip">ทั้งหมด <span>${total} รายการ</span></div>
+    <div class="cl-stat-chip">เสร็จแล้ว <span style="color:var(--green)">${done}</span></div>
+    <div class="cl-stat-chip">ค้างอยู่ <span style="color:#f87171">${total - done}</span></div>
+    <div class="cl-stat-chip">ความคืบหน้า <span style="color:var(--accent)">${pct}%</span></div>
+  `;
+
+  // history summary (วันอื่นๆ ที่มีข้อมูล)
+  const histKeys = Object.keys(data).filter(k => k !== todayKey).sort().reverse().slice(0, 14);
+  const histSection = document.getElementById('clHistorySection');
+  const histList = document.getElementById('clHistoryList');
+  if (histKeys.length > 0) {
+    histSection.style.display = 'block';
+    histList.innerHTML = histKeys.map(k => {
+      const d = data[k];
+      const at = Object.keys(d.autoChecked || {}).filter(id => d.autoChecked[id]).length;
+      const ct = (d.custom || []).length;
+      const cd = (d.custom || []).filter(c => c.done).length;
+      const total = at + ct; const done = at + cd;
+      const pct = total > 0 ? Math.round(done / total * 100) : 0;
+      const dateLabel = new Date(k + 'T12:00:00+07:00').toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
+      return `
+      <div class="cl-history-row" style="cursor:pointer" onclick="clSelectDate('${k}')">
+        <span class="cl-history-date">${dateLabel}</span>
+        <div style="flex:1;height:6px;background:var(--border);border-radius:4px;overflow:hidden;margin:0 12px">
+          <div style="height:100%;width:${pct}%;background:${pct===100?'var(--green)':'var(--accent)'};border-radius:4px"></div>
+        </div>
+        <span style="font-size:11px;color:var(--muted)">${done}/${total} <span style="color:${pct===100?'var(--green)':'var(--accent)'}">· ${pct}%</span></span>
+      </div>`;
+    }).join('');
+  } else {
+    histSection.style.display = 'none';
+  }
+}
+
+function clSelectDate(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  clViewDate = new Date(y, m - 1, d);
+  renderChecklist();
+}
+
+function clToggleAuto(dateKey, taskId, el) {
+  const data = clLoadData();
+  const day = clGetDay(data, dateKey);
+  day.autoChecked[taskId] = !day.autoChecked[taskId];
+  clSaveData(data);
+  saveClToSheet(dateKey);
+  el.classList.toggle('done', day.autoChecked[taskId]);
+  renderChecklist();
+}
+
+function clToggleCustom(dateKey, idx, el) {
+  const data = clLoadData();
+  const day = clGetDay(data, dateKey);
+  day.custom[idx].done = !day.custom[idx].done;
+  clSaveData(data);
+  saveClToSheet(dateKey);
+  renderChecklist();
+}
+
+function addCustomTask() {
+  const input = document.getElementById('clNewTask');
+  const text = input.value.trim();
+  if (!text) return;
+  const data = clLoadData();
+  const todayKey = clDateKey(new Date());
+  const day = clGetDay(data, todayKey);
+  day.custom.push({ id: String(Date.now()), text, done: false, ts: Date.now() });
+  clSaveData(data);
+  saveClToSheet(todayKey);
+  input.value = '';
+  renderChecklist();
+}
+
+function clDeleteCustom(dateKey, idx) {
+  const data = clLoadData();
+  const day = clGetDay(data, dateKey);
+  day.custom.splice(idx, 1);
+  clSaveData(data);
+  saveClToSheet(dateKey);
+  renderChecklist();
+}
+
+function updateDate() {
+  const now = new Date();
+  const opts = { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Bangkok' };
+  document.getElementById('dateDisplay').textContent = now.toLocaleDateString('th-TH', opts);
+}
+
+document.getElementById('detailModal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+document.getElementById('addModal').addEventListener('click', function(e) { if (e.target === this) closeAddModal(); });
+document.getElementById('editModal').addEventListener('click', function(e) { if (e.target === this) closeEditModal(); });
+
+updateDate();
+loadFromSheet();
+</script>
+</body>
+</html>
